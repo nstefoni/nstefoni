@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 237" width="1200" height="237" font-family="'Courier New',ui-monospace,monospace">
+  <rect width="1200" height="237" fill="#e7e4dd"/>
+  <g stroke="#0a0a0a" stroke-width="2">
+    <line x1="14" y1="14" x2="38" y2="14"/><line x1="14" y1="14" x2="14" y2="38"/>
+    <line x1="1186" y1="14" x2="1162" y2="14"/><line x1="1186" y1="14" x2="1186" y2="38"/>
+    <line x1="14" y1="223" x2="38" y2="223"/><line x1="14" y1="223" x2="14" y2="199"/>
+    <line x1="1186" y1="223" x2="1162" y2="223"/><line x1="1186" y1="223" x2="1186" y2="199"/></g>
+  <rect x="28" y="28" width="1144" height="181" fill="none" stroke="#0a0a0a" stroke-width="5"/>
+  <rect x="64" y="52" width="10" height="10" fill="#0a0a0a"/>
+  <text x="84" y="62" font-size="15" letter-spacing="4" fill="#0a0a0a">03 / FIND ME</text>
+  <line x1="64" y1="78" x2="1136" y2="78" stroke="#0a0a0a" stroke-width="2"/>
+  <text x="64" y="104" font-size="17" fill="#0a0a0a" fill-opacity="1" xml:space="preserve">LINKEDIN   in/nicolas-stefoni            [ ↗ ]</text><text x="64" y="133" font-size="17" fill="#0a0a0a" fill-opacity="0.78" xml:space="preserve">LOCATION   Buenos Aires, AR · UTC-03</text><text x="64" y="162" font-size="17" fill="#0a0a0a" fill-opacity="0.78" xml:space="preserve">EMAIL      nicolasg.stefoni@gmail.com</text>
+</svg>
