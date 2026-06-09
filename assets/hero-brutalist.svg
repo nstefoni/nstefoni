@@ -1,40 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" width="1200" height="360" font-family="'Courier New',ui-monospace,monospace">
-  <rect width="1200" height="360" fill="#e7e4dd"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" font-family="'Courier New',ui-monospace,monospace">
+  <rect width="1200" height="300" fill="#e7e4dd"/>
 
-  <!-- crop marks -->
+  <!-- crop marks (único ornamento, sutil) -->
   <g stroke="#0a0a0a" stroke-width="2">
-    <line x1="14" y1="14" x2="40" y2="14"/><line x1="14" y1="14" x2="14" y2="40"/>
-    <line x1="1186" y1="14" x2="1160" y2="14"/><line x1="1186" y1="14" x2="1186" y2="40"/>
-    <line x1="14" y1="346" x2="40" y2="346"/><line x1="14" y1="346" x2="14" y2="320"/>
-    <line x1="1186" y1="346" x2="1160" y2="346"/><line x1="1186" y1="346" x2="1186" y2="320"/>
+    <line x1="16" y1="16" x2="42" y2="16"/><line x1="16" y1="16" x2="16" y2="42"/>
+    <line x1="1184" y1="16" x2="1158" y2="16"/><line x1="1184" y1="16" x2="1184" y2="42"/>
+    <line x1="16" y1="284" x2="42" y2="284"/><line x1="16" y1="284" x2="16" y2="258"/>
+    <line x1="1184" y1="284" x2="1158" y2="284"/><line x1="1184" y1="284" x2="1184" y2="258"/>
   </g>
-  <rect x="28" y="28" width="1144" height="304" fill="none" stroke="#0a0a0a" stroke-width="6"/>
 
-  <!-- label vertical -->
-  <text x="-300" y="50" transform="rotate(-90 0 0)" font-size="12" letter-spacing="6" fill="#0a0a0a" opacity="0.6">SOFTWARE&#160;DEVELOPER</text>
+  <!-- meta line: rol (izq) · lugar/año (der) -->
+  <text x="64" y="72" font-size="13" letter-spacing="4" fill="#0a0a0a" fill-opacity="0.55">SOFTWARE DEVELOPER</text>
+  <text x="1136" y="72" font-size="13" letter-spacing="3" fill="#0a0a0a" fill-opacity="0.55" text-anchor="end">BUENOS AIRES — 2026</text>
 
-  <!-- meta header -->
-  <rect x="60" y="48" width="9" height="9" fill="#0a0a0a"/>
-  <text x="78" y="58" font-size="13" letter-spacing="3" fill="#0a0a0a" opacity="0.6">PROFILE</text>
-  <text x="60" y="84" font-size="13" letter-spacing="3" fill="#0a0a0a" opacity="0.6">BUENOS AIRES, AR · EST.2018 · UTC-03</text>
-  <rect x="980" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="984" y="40" width="4" height="22" fill="#0a0a0a"/><rect x="990" y="40" width="4" height="22" fill="#0a0a0a"/><rect x="996" y="40" width="5" height="22" fill="#0a0a0a"/><rect x="1004" y="40" width="4" height="22" fill="#0a0a0a"/><rect x="1010" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1014" y="40" width="3" height="22" fill="#0a0a0a"/><rect x="1021" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1027" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1031" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1036" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1041" y="40" width="5" height="22" fill="#0a0a0a"/><rect x="1048" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1054" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1058" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1064" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1069" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1073" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1078" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1083" y="40" width="3" height="22" fill="#0a0a0a"/><rect x="1088" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1093" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1098" y="40" width="5" height="22" fill="#0a0a0a"/><rect x="1105" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1109" y="40" width="5" height="22" fill="#0a0a0a"/><rect x="1117" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1121" y="40" width="2" height="22" fill="#0a0a0a"/><rect x="1125" y="40" width="3" height="22" fill="#0a0a0a"/>
-  <text x="1140" y="78" font-size="12" letter-spacing="2" fill="#0a0a0a" text-anchor="end" opacity="0.6">No. 2026</text>
+  <!-- foco: el nombre, con aire alrededor -->
+  <text x="60" y="190" font-size="78" font-weight="700" letter-spacing="-2" fill="#0a0a0a">NICOLAS STEFONI</text>
+  <rect x="828" y="163" width="30" height="30" fill="#0a0a0a"><animate attributeName="opacity" values="1;1;0;0" dur="1.1s" repeatCount="indefinite"/></rect>
 
-  <!-- nombre gigante -->
-  <text x="56" y="190" font-size="94" font-weight="700" fill="#0a0a0a" letter-spacing="-3">NICOLAS</text>
-  <text x="56" y="280" font-size="94" font-weight="700" fill="#0a0a0a" letter-spacing="-3">STEFONI</text>
-  <rect x="624" y="251" width="34" height="30" fill="#0a0a0a"><animate attributeName="opacity" values="1;1;0;0" dur="1.1s" repeatCount="indefinite"/></rect>
+  <!-- hairline -->
+  <line x1="62" y1="220" x2="1138" y2="220" stroke="#0a0a0a" stroke-width="1.5"/>
 
-  <!-- bloque negro invertido -->
-  <rect x="848" y="120" width="296" height="186" fill="#0a0a0a"/>
-  <rect x="872" y="148" width="8" height="8" fill="#e7e4dd"/>
-  <text x="888" y="157" font-size="13" letter-spacing="3" fill="#e7e4dd" opacity="0.55">STACK</text>
-  <text x="872" y="198" font-size="23" font-weight="700" letter-spacing="1" fill="#e7e4dd">MOBILE · WEB</text>
-  <text x="872" y="227" font-size="23" font-weight="700" letter-spacing="1" fill="#e7e4dd">END—TO—END</text>
-  <line x1="872" y1="248" x2="1120" y2="248" stroke="#e7e4dd" stroke-opacity="0.35" stroke-width="1"/>
-  <text x="872" y="282" font-size="13" letter-spacing="3" fill="#e7e4dd" opacity="0.8">RN · NEXT · TS · R3F</text>
-
-  <!-- footer spec (limpio, sin colisiones) -->
-  <line x1="56" y1="304" x2="788" y2="304" stroke="#0a0a0a" stroke-width="2"/>
-  <text x="56" y="324" font-size="12.5" letter-spacing="2" fill="#0a0a0a" opacity="0.75">FROM IDEA TO SHIP — MOBILE · WEB · DEV TOOLING &amp; AI · MOUNTAINEER OFF-KEYBOARD</text>
+  <!-- pie justificado -->
+  <text x="64" y="250" font-size="13" letter-spacing="4" fill="#0a0a0a" fill-opacity="0.7">MOBILE · WEB · END—TO—END</text>
+  <text x="1136" y="250" font-size="13" letter-spacing="4" fill="#0a0a0a" fill-opacity="0.55" text-anchor="end">MOUNTAINS IN BETWEEN</text>
 </svg>
