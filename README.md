@@ -48,7 +48,7 @@ _próximamente: lo que estoy escuchando 🎶_
 
 ### 🧊 Contributions in 3D
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nstefoni/nstefoni/main/profile-3d-contrib/profile-night-rainbow.svg" alt="3D contributions" width="100%" />
+  <img src="https://raw.githubusercontent.com/nstefoni/nstefoni/main/profile-3d-contrib/profile-night-green.svg" alt="3D contributions" width="100%" />
 </p>
 
 ### 🐍 Contribution snake
