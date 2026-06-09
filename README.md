@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nstefoni/nstefoni/main/assets/hero.svg" alt="Nicolas Stefoni — software developer · mobile · web · mountains" width="100%" />
+  <img src="https://raw.githubusercontent.com/nstefoni/nstefoni/main/assets/hero.svg?v=2" alt="Nicolas Stefoni — software developer · mobile · web · mountains" width="100%" />
 </p>
 
 <p align="center">
