@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" width="1200" height="360" font-family="'Trebuchet MS','Segoe UI',Verdana,sans-serif">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0b1026">
+        <animate attributeName="stop-color" values="#0b1026;#131a3a;#0d1b2e;#0b1026" dur="16s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="55%" stop-color="#172554">
+        <animate attributeName="stop-color" values="#172554;#1f3a5f;#173a4a;#172554" dur="16s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#0a1c2b"/>
+    </linearGradient>
+    <linearGradient id="aurora" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#34d399" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shimmer" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#78d7d7"/>
+      <stop offset="45%" stop-color="#e8fbff"/>
+      <stop offset="55%" stop-color="#e8fbff"/>
+      <stop offset="100%" stop-color="#78d7d7"/>
+      <animateTransform attributeName="gradientTransform" type="translate" values="-1 0;1 0;-1 0" dur="6s" repeatCount="indefinite"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- sky -->
+  <rect width="1200" height="360" fill="url(#sky)"/>
+
+  <!-- aurora ribbons -->
+  <g filter="url(#soft)" opacity="0.6">
+    <path d="M0 120 Q300 60 600 110 T1200 100 V160 Q900 120 600 160 T0 170 Z" fill="url(#aurora)">
+      <animate attributeName="opacity" values="0.25;0.7;0.25" dur="9s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="translate" values="0 0;-40 10;0 0" dur="18s" repeatCount="indefinite"/>
+    </path>
+    <path d="M0 90 Q400 140 700 90 T1200 120 V150 Q800 150 500 140 T0 130 Z" fill="url(#aurora)" opacity="0.4">
+      <animate attributeName="opacity" values="0.15;0.45;0.15" dur="12s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="translate" values="0 0;50 -8;0 0" dur="22s" repeatCount="indefinite"/>
+    </path>
+  </g>
+
+  <!-- stars -->
+  <g fill="#dbeafe">
+    <circle cx="90" cy="50" r="1.4"><animate attributeName="opacity" values="0.2;1;0.2" dur="3.1s" repeatCount="indefinite"/></circle>
+    <circle cx="200" cy="80" r="1"><animate attributeName="opacity" values="0.3;1;0.3" dur="2.4s" repeatCount="indefinite"/></circle>
+    <circle cx="330" cy="40" r="1.2"><animate attributeName="opacity" values="0.2;0.9;0.2" dur="3.7s" repeatCount="indefinite"/></circle>
+    <circle cx="470" cy="70" r="1"><animate attributeName="opacity" values="0.4;1;0.4" dur="2.9s" repeatCount="indefinite"/></circle>
+    <circle cx="610" cy="45" r="1.5"><animate attributeName="opacity" values="0.2;1;0.2" dur="3.3s" repeatCount="indefinite"/></circle>
+    <circle cx="760" cy="85" r="1"><animate attributeName="opacity" values="0.3;0.9;0.3" dur="2.6s" repeatCount="indefinite"/></circle>
+    <circle cx="900" cy="55" r="1.3"><animate attributeName="opacity" values="0.25;1;0.25" dur="3.9s" repeatCount="indefinite"/></circle>
+    <circle cx="1040" cy="75" r="1"><animate attributeName="opacity" values="0.3;1;0.3" dur="2.7s" repeatCount="indefinite"/></circle>
+    <circle cx="1130" cy="42" r="1.4"><animate attributeName="opacity" values="0.2;0.9;0.2" dur="3.5s" repeatCount="indefinite"/></circle>
+    <circle cx="150" cy="120" r="1"><animate attributeName="opacity" values="0.2;0.8;0.2" dur="4.1s" repeatCount="indefinite"/></circle>
+    <circle cx="540" cy="110" r="1"><animate attributeName="opacity" values="0.3;1;0.3" dur="3.2s" repeatCount="indefinite"/></circle>
+    <circle cx="980" cy="115" r="1"><animate attributeName="opacity" values="0.25;0.9;0.25" dur="2.8s" repeatCount="indefinite"/></circle>
+  </g>
+
+  <!-- mountains: far -->
+  <g>
+    <polygon points="0,300 180,180 320,250 460,150 640,260 820,170 1000,250 1200,190 1200,360 0,360" fill="#1e3a5f" opacity="0.85">
+      <animateTransform attributeName="transform" type="translate" values="0 0;18 0;0 0" dur="26s" repeatCount="indefinite"/>
+    </polygon>
+  </g>
+  <!-- mid -->
+  <polygon points="0,360 140,250 300,310 480,220 680,320 880,240 1080,310 1200,260 1200,360" fill="#14253c">
+    <animateTransform attributeName="transform" type="translate" values="0 0;-12 0;0 0" dur="20s" repeatCount="indefinite"/>
+  </polygon>
+  <!-- near with snow caps -->
+  <polygon points="0,360 220,250 360,300 560,235 560,235 760,300 980,250 1200,300 1200,360" fill="#0b1726"/>
+  <polygon points="520,258 560,235 600,258 580,250 560,244 540,250" fill="#cfeefe" opacity="0.9"/>
+  <polygon points="200,266 220,250 245,266 230,260 220,256 210,260" fill="#cfeefe" opacity="0.85"/>
+  <polygon points="945,266 980,250 1010,266 990,259 980,254 965,259" fill="#cfeefe" opacity="0.85"/>
+
+  <!-- name -->
+  <text x="600" y="175" text-anchor="middle" font-size="78" font-weight="700" fill="url(#shimmer)" filter="url(#glow)" letter-spacing="2">Nicolas Stefoni</text>
+  <!-- tagline -->
+  <text x="600" y="215" text-anchor="middle" font-size="21" fill="#9fb3c8" letter-spacing="3">software engineer&#160;&#160;·&#160;&#160;mobile&#160;·&#160;web&#160;·&#160;3D&#160;&#160;·&#160;&#160;mountains in between</text>
+  <!-- underline sweep -->
+  <rect x="420" y="232" width="360" height="2" fill="#78d7d7" opacity="0.5">
+    <animate attributeName="width" values="0;360;0" dur="6s" repeatCount="indefinite"/>
+    <animate attributeName="x" values="600;420;600" dur="6s" repeatCount="indefinite"/>
+  </rect>
+</svg>
