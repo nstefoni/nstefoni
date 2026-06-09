@@ -1,0 +1,22 @@
+[
+  {
+    "type": "normal",
+    "fileName": "profile-ice.svg",
+    "growingAnimation": true,
+    "backgroundColor": "#0d1117",
+    "foregroundColor": "#9fb3c8",
+    "strongColor": "#9fe3f5",
+    "weakColor": "#1e3344",
+    "radarColor": "#5793a8",
+    "contribColors": ["#0f1622", "#1e3344", "#2f5366", "#5793a8", "#9fe3f5"]
+  },
+  {
+    "type": "radar_contrib_only",
+    "fileName": "profile-ice-nopie.svg",
+    "growingAnimation": true,
+    "backgroundColor": "#0d1117",
+    "foregroundColor": "#9fb3c8",
+    "weakColor": "#1e3344",
+    "radarColor": "#5793a8"
+  }
+]
