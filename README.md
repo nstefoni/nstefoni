@@ -42,8 +42,3 @@ I build products from idea to ship — strongest on **mobile** (React Native / E
 <p align="center">
   <img src="https://raw.githubusercontent.com/nstefoni/nstefoni/main/assets/contrib-iso.svg" alt="contributions" width="100%" />
 </p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/nstefoni/nstefoni/output/snake.svg" alt="contribution snake" width="100%" />
-</p>
-
