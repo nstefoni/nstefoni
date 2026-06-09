@@ -1,10 +1,8 @@
-name: 3D Contributions
+name: Contributions
 on:
   schedule:
     - cron: "0 18 * * *"
   workflow_dispatch:
-  push:
-    branches: [main]
 permissions:
   contents: write
 jobs:
@@ -12,15 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: yoshi389111/github-profile-3d-contrib@0.7.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: python3 scripts/gen_contrib_iso.py nstefoni > assets/contrib-iso.svg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          USERNAME: nstefoni
-          SETTING_JSON: profile-3d-contrib-settings.json
       - name: commit & push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A profile-3d-contrib
-          git commit -m "chore: refresh 3d contributions" || { echo "sin cambios"; exit 0; }
+          git add assets/contrib-iso.svg
+          git commit -m "chore: refresh contributions" || exit 0
           git push
