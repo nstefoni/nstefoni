@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 295" width="1200" height="295" font-family="'Courier New',ui-monospace,monospace">
-  <rect width="1200" height="295" fill="#e7e4dd"/>
-  <g stroke="#0a0a0a" stroke-width="2">
+  <rect width="1200" height="295" fill="#0a0a0a"/>
+  <g stroke="#565b64" stroke-width="2">
     <line x1="14" y1="14" x2="38" y2="14"/><line x1="14" y1="14" x2="14" y2="38"/>
     <line x1="1186" y1="14" x2="1162" y2="14"/><line x1="1186" y1="14" x2="1186" y2="38"/>
     <line x1="14" y1="281" x2="38" y2="281"/><line x1="14" y1="281" x2="14" y2="257"/>
     <line x1="1186" y1="281" x2="1162" y2="281"/><line x1="1186" y1="281" x2="1186" y2="257"/></g>
-  <rect x="28" y="28" width="1144" height="239" fill="none" stroke="#0a0a0a" stroke-width="5"/>
-  <rect x="64" y="52" width="10" height="10" fill="#0a0a0a"/>
-  <text x="84" y="62" font-size="15" letter-spacing="4" fill="#0a0a0a">02 / STACK</text>
-  <line x1="64" y1="78" x2="1136" y2="78" stroke="#0a0a0a" stroke-width="2"/>
-  <text x="64" y="104" font-size="17" fill="#0a0a0a" fill-opacity="1" xml:space="preserve">LANG     TypeScript · JavaScript</text><text x="64" y="133" font-size="17" fill="#0a0a0a" fill-opacity="1" xml:space="preserve">MOBILE   React Native · Expo</text><text x="64" y="162" font-size="17" fill="#0a0a0a" fill-opacity="1" xml:space="preserve">WEB      Next.js · React · Tailwind</text><text x="64" y="191" font-size="17" fill="#0a0a0a" fill-opacity="1" xml:space="preserve">BACK     Node.js · GraphQL</text><text x="64" y="220" font-size="17" fill="#0a0a0a" fill-opacity="1" xml:space="preserve">TOOLS    Git · Figma · Bun · Jest · R3F · Claude Code</text>
+  <rect x="28" y="28" width="1144" height="239" fill="none" stroke="#2f343b" stroke-width="2"/>
+  <rect x="64" y="52" width="10" height="10" fill="#ededed"/>
+  <text x="84" y="62" font-size="15" letter-spacing="4" fill="#ededed">02 / STACK</text>
+  <line x1="64" y1="78" x2="1136" y2="78" stroke="#2f343b" stroke-width="1.5"/>
+  <text x="64" y="104" font-size="17" fill="#ededed" xml:space="preserve">LANG     TypeScript · JavaScript</text><text x="64" y="133" font-size="17" fill="#ededed" xml:space="preserve">MOBILE   React Native · Expo</text><text x="64" y="162" font-size="17" fill="#ededed" xml:space="preserve">WEB      Next.js · React · Tailwind</text><text x="64" y="191" font-size="17" fill="#ededed" xml:space="preserve">BACK     Node.js · GraphQL</text><text x="64" y="220" font-size="17" fill="#ededed" xml:space="preserve">TOOLS    Git · Figma · Bun · Jest · R3F · Claude Code</text>
 </svg>
