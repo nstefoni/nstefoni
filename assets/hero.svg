@@ -80,7 +80,7 @@
   <!-- name -->
   <text x="600" y="175" text-anchor="middle" font-size="78" font-weight="700" fill="url(#shimmer)" filter="url(#glow)" letter-spacing="2">Nicolas Stefoni</text>
   <!-- tagline -->
-  <text x="600" y="215" text-anchor="middle" font-size="21" fill="#9fb3c8" letter-spacing="3">software engineer&#160;&#160;·&#160;&#160;mobile&#160;·&#160;web&#160;·&#160;3D&#160;&#160;·&#160;&#160;mountains in between</text>
+  <text x="600" y="215" text-anchor="middle" font-size="21" fill="#9fb3c8" letter-spacing="3">software developer&#160;&#160;·&#160;&#160;mobile&#160;·&#160;web&#160;&#160;·&#160;&#160;mountains in between</text>
   <!-- underline sweep -->
   <rect x="420" y="232" width="360" height="2" fill="#78d7d7" opacity="0.5">
     <animate attributeName="width" values="0;360;0" dur="6s" repeatCount="indefinite"/>

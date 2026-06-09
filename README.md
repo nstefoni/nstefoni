@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nstefoni/nstefoni/main/assets/hero.svg" alt="Nicolas Stefoni — software engineer · mobile · web · 3D · mountains" width="100%" />
+  <img src="https://raw.githubusercontent.com/nstefoni/nstefoni/main/assets/hero.svg" alt="Nicolas Stefoni — software developer · mobile · web · mountains" width="100%" />
 </p>
 
 <p align="center">
@@ -12,14 +12,12 @@
 ---
 
 ### About
-**Software engineer** who builds **end-to-end** — **mobile** (React Native / Expo) and **web** (Next.js) — with a soft spot for **frontend craft, developer tooling & AI** (I build harnesses on top of Claude Code). I ship side projects, care about clean architecture and DX, and I'm a **mountaineer** when I'm off the keyboard 🏔️.
+**Software developer** who builds **end-to-end** — **mobile** (React Native / Expo) and **web** (Next.js) — with a soft spot for **frontend craft, developer tooling & AI** (I build harnesses on top of Claude Code). I ship side projects, care about clean architecture and DX, and I'm a **mountaineer** when I'm off the keyboard 🏔️.
 
 Currently building in fintech at **belo** — but always with something of my own in the works.
 
-> **Where I'm headed →** I want to build **early-warning systems**: technology that helps keep people safe.
-
 ### Hola 🇦🇷
-**Ingeniero de software** que construye **de punta a punta** — **mobile** (React Native / Expo) y **web** (Next.js) —, con debilidad por el **frontend, el tooling para devs y la IA**. Hago proyectos propios, me importan la arquitectura limpia y la DX, y soy **montañista** fuera de la pantalla 🏔️. Hoy en fintech (**belo**), pero siempre con algo propio entre manos. **Hacia dónde voy:** sistemas de **alerta temprana**.
+**Desarrollador de software** que construye **de punta a punta** — **mobile** (React Native / Expo) y **web** (Next.js) —, con debilidad por el **frontend, el tooling para devs y la IA**. Hago proyectos propios, me importan la arquitectura limpia y la DX, y soy **montañista** fuera de la pantalla 🏔️. Hoy en fintech (**belo**), pero siempre con algo propio entre manos.
 
 ---
 
@@ -41,10 +39,6 @@ Currently building in fintech at **belo** — but always with something of my ow
   <img src="https://img.shields.io/badge/Figma-F24E1E?logo=figma&logoColor=white&style=for-the-badge" />
   <img src="https://img.shields.io/badge/Claude_Code-D97757?logo=anthropic&logoColor=white&style=for-the-badge" />
 </p>
-
-### 🎧 Now playing
-<!-- SPOTIFY: pendiente de tu OAuth. Cuando tengas la URL del widget, reemplazá esta línea. -->
-_próximamente: lo que estoy escuchando 🎶_
 
 ### 🧊 Contributions in 3D
 <p align="center">
