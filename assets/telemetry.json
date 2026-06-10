@@ -1,0 +1,253 @@
+{
+  "at": "2026-06-10T23:27:10.305Z",
+  "metrics": {
+    "J": 4.6470862103025095,
+    "sigma": 12.807283420818878,
+    "loss": 0.041666666666666664,
+    "entropy": 0.3805393561302934,
+    "mean": 29.10742491168729,
+    "p50": 26.665922991113042
+  },
+  "samples": [
+    {
+      "probe": "GH",
+      "ms": 81.89474064484239,
+      "lost": false
+    },
+    {
+      "probe": "NPM",
+      "ms": 29.559599837919873,
+      "lost": false
+    },
+    {
+      "probe": "CF",
+      "ms": 25.11956043913947,
+      "lost": false
+    },
+    {
+      "probe": "VRC",
+      "ms": 29.88332304993921,
+      "lost": false
+    },
+    {
+      "probe": "GH",
+      "ms": 33.74165918026878,
+      "lost": false
+    },
+    {
+      "probe": "NPM",
+      "ms": 31.10644822805492,
+      "lost": false
+    },
+    {
+      "probe": "CF",
+      "ms": 31.135389188415683,
+      "lost": false
+    },
+    {
+      "probe": "VRC",
+      "ms": 26.017339005570065,
+      "lost": true
+    },
+    {
+      "probe": "GH",
+      "ms": 27.35691994339836,
+      "lost": false
+    },
+    {
+      "probe": "NPM",
+      "ms": 24.648511115682485,
+      "lost": false
+    },
+    {
+      "probe": "CF",
+      "ms": 26.665922991113042,
+      "lost": false
+    },
+    {
+      "probe": "VRC",
+      "ms": 20.577455123736293,
+      "lost": false
+    },
+    {
+      "probe": "GH",
+      "ms": 23.394231460632227,
+      "lost": false
+    },
+    {
+      "probe": "NPM",
+      "ms": 23.858006242833103,
+      "lost": false
+    },
+    {
+      "probe": "CF",
+      "ms": 24.079930491077256,
+      "lost": false
+    },
+    {
+      "probe": "VRC",
+      "ms": 26.207959448210957,
+      "lost": false
+    },
+    {
+      "probe": "GH",
+      "ms": 27.192742991454598,
+      "lost": false
+    },
+    {
+      "probe": "NPM",
+      "ms": 30.86263803174467,
+      "lost": false
+    },
+    {
+      "probe": "CF",
+      "ms": 30.353038783295354,
+      "lost": false
+    },
+    {
+      "probe": "VRC",
+      "ms": 89.79742255576912,
+      "lost": false
+    },
+    {
+      "probe": "GH",
+      "ms": 31.413096326659737,
+      "lost": false
+    },
+    {
+      "probe": "NPM",
+      "ms": 26.270616078224474,
+      "lost": false
+    },
+    {
+      "probe": "CF",
+      "ms": 41.15141044588596,
+      "lost": true
+    },
+    {
+      "probe": "VRC",
+      "ms": 30.66718351810128,
+      "lost": false
+    },
+    {
+      "probe": "GH",
+      "ms": 26.171498706406307,
+      "lost": false
+    },
+    {
+      "probe": "NPM",
+      "ms": 26.67953504286387,
+      "lost": false
+    },
+    {
+      "probe": "CF",
+      "ms": 26.1566087869126,
+      "lost": false
+    },
+    {
+      "probe": "VRC",
+      "ms": 25.30748186111719,
+      "lost": false
+    },
+    {
+      "probe": "GH",
+      "ms": 18.91779246397647,
+      "lost": false
+    },
+    {
+      "probe": "NPM",
+      "ms": 19.66168293952548,
+      "lost": false
+    },
+    {
+      "probe": "CF",
+      "ms": 40.40918529151831,
+      "lost": false
+    },
+    {
+      "probe": "VRC",
+      "ms": 25.61827117238982,
+      "lost": false
+    },
+    {
+      "probe": "GH",
+      "ms": 30.24651923357862,
+      "lost": false
+    },
+    {
+      "probe": "NPM",
+      "ms": 29.25774318212206,
+      "lost": false
+    },
+    {
+      "probe": "CF",
+      "ms": 28.002388248947135,
+      "lost": false
+    },
+    {
+      "probe": "VRC",
+      "ms": 27.531132470710677,
+      "lost": false
+    },
+    {
+      "probe": "GH",
+      "ms": 29.46692607310342,
+      "lost": false
+    },
+    {
+      "probe": "NPM",
+      "ms": 26.145704094675715,
+      "lost": false
+    },
+    {
+      "probe": "CF",
+      "ms": 26.982375055034034,
+      "lost": false
+    },
+    {
+      "probe": "VRC",
+      "ms": 24.71136610456804,
+      "lost": false
+    },
+    {
+      "probe": "GH",
+      "ms": 26.194808949263404,
+      "lost": false
+    },
+    {
+      "probe": "NPM",
+      "ms": 25.398040963296307,
+      "lost": false
+    },
+    {
+      "probe": "CF",
+      "ms": 18.93783598184558,
+      "lost": false
+    },
+    {
+      "probe": "VRC",
+      "ms": 19.231787835220903,
+      "lost": false
+    },
+    {
+      "probe": "GH",
+      "ms": 24.223887775514385,
+      "lost": false
+    },
+    {
+      "probe": "NPM",
+      "ms": 20.170743517021247,
+      "lost": false
+    },
+    {
+      "probe": "CF",
+      "ms": 20.76180442351412,
+      "lost": false
+    },
+    {
+      "probe": "VRC",
+      "ms": 26.970030093976305,
+      "lost": false
+    }
+  ]
+}

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NICOLAS STEFONI · JITTERSCOPE</title>
+<meta name="description" content="Live network jitter — measured from your connection, right now."/>
+<link rel="stylesheet" href="theme.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:var(--bg);overflow:hidden}
+body{font-family:ui-monospace,'SF Mono','Cascadia Mono','JetBrains Mono','Roboto Mono',Menlo,Consolas,monospace;color:var(--ink)}
+canvas{position:fixed;inset:0;display:block}
+.ui{position:fixed;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:28px 36px;pointer-events:none;z-index:2}
+.ui.top{top:0}.ui.bot{bottom:0;align-items:flex-end}
+.lockup .name{font-size:clamp(18px,3.2vw,30px);font-weight:500;letter-spacing:.45em;white-space:nowrap}
+.lockup .sub{font-size:10px;letter-spacing:.3em;color:var(--dim);margin-top:8px}
+.ent{text-align:right}
+.ent .lab{font-size:10px;letter-spacing:.3em;color:var(--dim)}
+.ent .bar{width:140px;height:6px;border:1px solid var(--hair);margin:8px 0 6px auto}
+.ent .fill{height:100%;width:4%;background:var(--acc);transition:width .4s steps(6)}
+.ent .val{font-size:12px;color:var(--acc)}
+.stats{font-size:10px;letter-spacing:.18em;color:var(--dim);line-height:2}
+.stats b{color:var(--ink);font-weight:500}
+.gh{pointer-events:auto;font-size:10px;letter-spacing:.3em;color:var(--dim);text-decoration:none;border:1px solid var(--hair);padding:10px 16px}
+.gh:hover{color:var(--ink);border-color:var(--ink)}
+.tag{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);font-size:10px;letter-spacing:.3em;color:var(--dim);z-index:2}
+.cur{display:inline-block;width:6px;height:11px;background:var(--acc);vertical-align:-1px;animation:bl 1.15s steps(2,jump-none) infinite}
+@keyframes bl{50%{opacity:0}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="ui top">
+  <div class="lockup">
+    <div class="name">NICOLAS STEFONI</div>
+    <div class="sub">JITTERSCOPE — MEASURING <span id="who">YOUR</span> CONNECTION <span class="cur"></span></div>
+  </div>
+  <div class="ent">
+    <div class="lab">SIGNAL ENTROPY</div>
+    <div class="bar"><div class="fill" id="efill"></div></div>
+    <div class="val" id="eval">.00</div>
+  </div>
+</div>
+<div class="ui bot">
+  <div class="stats" id="stats">WARMING UP PROBES…</div>
+  <a class="gh" href="https://github.com/nstefoni">GITHUB ↗</a>
+</div>
+<div class="tag" id="tag">● ALL SIGNALS NOMINAL</div>
+<script type="module">
+import * as THREE from "https://esm.sh/three@0.160.0";
+
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const COL = { bg: css("--bg"), ink: css("--ink"), dim: css("--dim"), acc: css("--acc"), alert: css("--alert"), warn: css("--warn") };
+
+const PROBES = [
+  { name: "GH",  url: "https://api.github.com/" },
+  { name: "NPM", url: "https://registry.npmjs.org/" },
+  { name: "CF",  url: "https://www.cloudflare.com/cdn-cgi/trace" },
+  { name: "VRC", url: "https://vercel.com/favicon.ico" },
+];
+const N = 240;
+const buf = PROBES.map(() => new Array(N).fill(null));
+const stat = PROBES.map(() => ({ p50: 0, jit: 0, loss: 0, last: 0 }));
+let entropy = 0.04;
+
+async function probe(i) {
+  const t0 = performance.now();
+  try {
+    const ac = new AbortController();
+    const to = setTimeout(() => ac.abort(), 4000);
+    await fetch(PROBES[i].url + "?t=" + Math.random(), { mode: "no-cors", cache: "no-store", signal: ac.signal });
+    clearTimeout(to);
+    return performance.now() - t0;
+  } catch { return null; }
+}
+function push(i, v) {
+  buf[i].push(v); buf[i].shift();
+  const ok = buf[i].filter((x) => x != null);
+  if (ok.length > 4) {
+    const s = [...ok].sort((a, b) => a - b);
+    stat[i].p50 = s[Math.floor(s.length / 2)];
+    let J = 0;
+    for (let k = 1; k < ok.length; k++) J += (Math.abs(ok[k] - ok[k - 1]) - J) / 16;
+    stat[i].jit = J;
+    stat[i].loss = 1 - ok.length / buf[i].filter((x) => x !== undefined).length;
+    stat[i].last = v == null ? 0 : v;
+  }
+}
+(async function loop() {
+  for (let r = 0; ; r++) {
+    const i = r % PROBES.length;
+    push(i, await probe(i));
+    const J = stat.reduce((a, s) => a + s.jit, 0) / PROBES.length;
+    const loss = stat.reduce((a, s) => a + s.loss, 0) / PROBES.length;
+    entropy += (Math.min(1, J / 60 + loss * 1.6) - entropy) * 0.08;
+    ui();
+    await new Promise((ok) => setTimeout(ok, 450));
+  }
+})();
+
+function ui() {
+  const e = document.getElementById("efill"), v = document.getElementById("eval"), tag = document.getElementById("tag");
+  const col = entropy > 0.6 ? COL.alert : entropy > 0.35 ? COL.warn : COL.acc;
+  e.style.width = Math.max(3, entropy * 100) + "%"; e.style.background = col;
+  v.textContent = entropy.toFixed(2).slice(1); v.style.color = col;
+  tag.textContent = entropy > 0.6 ? "▲ HIGH ENTROPY — DEGRADATION LIKELY" : entropy > 0.35 ? "◆ ENTROPY RISING" : "● ALL SIGNALS NOMINAL";
+  tag.style.color = col;
+  document.getElementById("stats").innerHTML = PROBES.map(
+    (p, i) => `${p.name} <b>${stat[i].p50 ? stat[i].p50.toFixed(0) : "··"}ms</b> ±${stat[i].jit.toFixed(1)}`
+  ).join(" &nbsp;·&nbsp; ") + ` &nbsp;·&nbsp; <b>${(stat.reduce((a,s)=>a+s.loss,0)/4*100).toFixed(0)}%</b> LOSS`;
+}
+
+const cv = document.getElementById("c");
+const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: false });
+renderer.setClearColor(new THREE.Color(COL.bg), 1);
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(new THREE.Color(COL.bg), 60, 240);
+const cam = new THREE.PerspectiveCamera(38, 1, 0.1, 500);
+cam.position.set(0, 14, 92);
+
+const W = 150;
+function mkLine(color, opacity) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+  const m = new THREE.LineBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity });
+  return new THREE.Line(g, m);
+}
+const lines = PROBES.map((_, i) => { const l = mkLine(i === 0 ? COL.ink : COL.dim, i === 0 ? 0.95 : 0.34); l.position.z = -i * 16; scene.add(l); return l; });
+const ghostA = mkLine(COL.alert, 0.0), ghostB = mkLine("#5da8a4", 0.0);
+ghostA.material.blending = ghostB.material.blending = THREE.AdditiveBlending;
+scene.add(ghostA, ghostB);
+
+const grid = new THREE.GridHelper(300, 30, new THREE.Color(COL.dim), new THREE.Color(COL.dim));
+grid.material.transparent = true; grid.material.opacity = 0.07; grid.position.y = -14; scene.add(grid);
+
+const dotG = new THREE.SphereGeometry(0.7, 12, 12);
+const dot = new THREE.Mesh(dotG, new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.acc) }));
+scene.add(dot);
+
+function yOf(v, i) {
+  if (v == null) return -8;
+  const p = Math.max(8, stat[i].p50 || 40);
+  return Math.min(26, ((v - p) / p) * 10);
+}
+function fill(line, i, ox = 0, oy = 0) {
+  const a = line.geometry.attributes.position.array;
+  for (let k = 0; k < N; k++) {
+    a[k * 3] = -W / 2 + (k / (N - 1)) * W + ox;
+    a[k * 3 + 1] = yOf(buf[i][k], i) + oy;
+    a[k * 3 + 2] = line.position.z === undefined ? 0 : 0;
+  }
+  line.geometry.attributes.position.needsUpdate = true;
+}
+let gox = 0, goy = 0;
+setInterval(() => {
+  const k = entropy * 3;
+  gox = (Math.random() - 0.5) * 3 * k; goy = (Math.random() - 0.5) * 2 * k;
+  ghostA.material.opacity = Math.min(0.5, entropy * 0.8);
+  ghostB.material.opacity = Math.min(0.5, entropy * 0.8);
+}, 95);
+
+let mx = 0, my = 0;
+addEventListener("pointermove", (e) => { mx = (e.clientX / innerWidth - 0.5) * 2; my = (e.clientY / innerHeight - 0.5) * 2; });
+function resize() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
+}
+addEventListener("resize", resize); resize();
+
+let t = 0;
+function frame() {
+  t += 0.016;
+  lines.forEach((l, i) => fill(l, i));
+  fill(ghostA, 0, gox, goy); fill(ghostB, 0, -gox, -goy);
+  const head = buf[0][N - 1];
+  dot.position.set(W / 2, yOf(head, 0), 0);
+  dot.scale.setScalar(1 + Math.sin(t * 3) * 0.25);
+  const shake = entropy > 0.5 ? (Math.random() - 0.5) * entropy * 1.6 : 0;
+  cam.position.x = mx * 7 + shake;
+  cam.position.y = 13 - my * 5 + shake * 0.5;
+  cam.lookAt(0, 0, -18);
+  renderer.render(scene, cam);
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>

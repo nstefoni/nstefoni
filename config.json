@@ -1,0 +1,64 @@
+{
+  "login": "nstefoni",
+  "name": "NICOLAS STEFONI",
+  "role": "SOFTWARE DEVELOPER",
+  "place": "BUENOS AIRES",
+  "coords": "34.6°S 58.4°W",
+  "tagline_left": "MOBILE · WEB · END-TO-END",
+  "tagline_right": "MOUNTAINS IN BETWEEN",
+  "site": "https://nstefoni.github.io/nstefoni/",
+  "theme": "daydream",
+  "themes": {
+    "daydream": {
+      "bg": "#232e36",
+      "ink": "#ede8dc",
+      "dim": "#93a0a8",
+      "faint": "rgba(237,232,220,0.13)",
+      "hair": "rgba(237,232,220,0.25)",
+      "accent": "#e8893c",
+      "alert": "#ff4530",
+      "warn": "#ffb340",
+      "ghostA": "#ff4530",
+      "ghostB": "#5da8a4",
+      "envFill": "rgba(232,137,60,0.08)"
+    },
+    "espresso": {
+      "bg": "#160f09",
+      "ink": "#ece5d8",
+      "dim": "#93897a",
+      "faint": "rgba(236,229,216,0.14)",
+      "hair": "rgba(236,229,216,0.26)",
+      "accent": "#e0a458",
+      "alert": "#ff4530",
+      "warn": "#e07a3f",
+      "ghostA": "#ff4530",
+      "ghostB": "#58c9b9",
+      "envFill": "rgba(224,164,88,0.08)"
+    }
+  },
+  "about_en": [
+    "I ship product end to end — mobile (React Native · Expo)",
+    "and web (Next.js). Clean architecture, sharp DX, and UI",
+    "that just works. I build developer tooling and explore AI.",
+    "Mountaineer off-keyboard."
+  ],
+  "about_es": [
+    "ES · Producto de punta a punta — mobile y web.",
+    "Arquitectura limpia, buena DX, UI que funciona.",
+    "Construyo tooling y exploro IA. Montañista."
+  ],
+  "stack": [
+    ["LANG", "TypeScript · JavaScript"],
+    ["MOBILE", "React Native · Expo"],
+    ["WEB", "Next.js · React · Tailwind"],
+    ["BACK", "Node.js · GraphQL"],
+    ["TOOLS", "Git · Figma · Bun · Jest · R3F · Claude Code"]
+  ],
+  "probes": [
+    { "name": "GH", "url": "https://api.github.com/" },
+    { "name": "NPM", "url": "https://registry.npmjs.org/" },
+    { "name": "CF", "url": "https://www.cloudflare.com/cdn-cgi/trace" },
+    { "name": "VRC", "url": "https://vercel.com/" }
+  ],
+  "rounds": 12
+}

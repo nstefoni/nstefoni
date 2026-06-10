@@ -1,0 +1,36 @@
+name: jitterscope · probe & render
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["scripts/**", "config.json"]
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Probe the network & render SVGs
+        run: node scripts/generate.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit if the signal changed
+        run: |
+          git config user.name "jitterscope-bot"
+          git config user.email "actions@github.com"
+          git add assets/
+          git diff --cached --quiet && echo "no drift" && exit 0
+          git commit -m "telemetry: $(date -u +'%Y-%m-%d %H:%M') UTC"
+          git push
