@@ -209,7 +209,8 @@ function card(series, m, gh) {
   for (const l of cfg.about_en) { sections += txt(X0, y, l, { size: 13, fill: T.ink, ls: 1.2 }); y += 22; }
   y += 8;
   for (const l of cfg.about_es) { sections += txt(X0, y, l, { size: 12, fill: T.dim, ls: 1.2 }); y += 20; }
-  sections += `<rect x="${X0 + cfg.about_es[cfg.about_es.length - 1].length * 7.55 + 10}" y="${y - 32}" width="7" height="12" fill="${T.accent}"><animate attributeName="opacity" values="1;1;0;0" dur="1.15s" repeatCount="indefinite"/></rect>`;
+  // mono 12px + ls 1.2 ≈ 8.4px/char; keep a clear gap after the final line
+  sections += `<rect x="${(X0 + cfg.about_es[cfg.about_es.length - 1].length * 8.45 + 12).toFixed(0)}" y="${y - 32}" width="7" height="12" fill="${T.accent}"><animate attributeName="opacity" values="1;1;0;0" dur="1.15s" repeatCount="indefinite"/></rect>`;
   y += 16;
   sections += `<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="${T.hair}" stroke-width="1"/>`;
   y += 40;
