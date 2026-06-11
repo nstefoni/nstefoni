@@ -43,17 +43,22 @@ canvas:active{cursor:grabbing}
     <div class="sub">JITTERSCOPE — MEASURING YOUR CONNECTION <span class="cur"></span></div>
   </div>
   <div class="ent">
-    <div class="lab">SIGNAL ENTROPY</div>
+    <div class="lab">SHANNON ENTROPY</div>
     <div class="bar"><div class="fill" id="efill"></div></div>
     <div class="val" id="eval">.00</div>
   </div>
 </div>
 <div class="ui bot">
   <div class="stats">
+    <div id="events" style="color:var(--dim);font-size:9px;letter-spacing:.15em;line-height:1.9;min-height:0"></div>
     <div id="tag">● WARMING UP PROBES…</div>
     <div id="stats">&nbsp;</div>
   </div>
   <a class="gh" href="https://github.com/nstefoni">GITHUB ↗</a>
+</div>
+<div style="position:fixed;left:36px;right:36px;bottom:118px;z-index:2;pointer-events:none">
+  <div style="font-size:9px;letter-spacing:.3em;color:var(--dim);margin-bottom:5px">ENTROPY TRACE · PERSISTS ACROSS VISITS</div>
+  <canvas id="tl" style="width:100%;height:54px;display:block;opacity:.95"></canvas>
 </div>
 <div class="hint" id="hint">DRAG TO ORBIT · SCROLL TO ZOOM · HISTORY SINKS BELOW</div>
 <script type="module">
@@ -95,15 +100,34 @@ function push(i, v) {
 }
 const lossOf = (i) => (stat[i].attempts > 3 ? stat[i].fails / stat[i].attempts : 0);
 
+// Shannon entropy over the sliding window (values normalized per probe by its
+// p50 so different baselines share one distribution): predictable → 0, chaos → 1
+function shannon(values, k = 12) {
+  if (values.length < 8) return 0;
+  const s = [...values].sort((a, b) => a - b);
+  const p50 = s[Math.floor(s.length / 2)];
+  const lo = p50 * 0.6, hi = p50 * 1.8;
+  if (hi - lo < 1e-9) return 0;
+  const hist = new Array(k).fill(0);
+  for (const v of values) {
+    const c = Math.min(hi, Math.max(lo, v));
+    hist[Math.floor(((c - lo) / (hi - lo)) * (k - 1e-9))]++;
+  }
+  let h = 0;
+  for (const c of hist) if (c) { const p = c / values.length; h -= p * Math.log2(p); }
+  return h / Math.log2(k);
+}
+const recent = [];
+
 (async function loop() {
   for (let r = 0; ; r++) {
     const i = r % PROBES.length;
-    push(i, await probe(i));
+    const v = await probe(i);
+    push(i, v);
+    if (v != null && stat[i].p50 > 0) { recent.push(v / stat[i].p50); if (recent.length > 96) recent.shift(); }
     if (i === PROBES.length - 1) head = (head + 1) % M;
-    const live = stat.filter((s) => s.attempts > 2);
-    const J = live.length ? live.reduce((a, s) => a + s.jit, 0) / live.length : 0;
     const loss = PROBES.reduce((a, _, k) => a + lossOf(k), 0) / PROBES.length;
-    entropy += (Math.min(1, 0.1 + 0.5 * (J / (J + 50)) + loss * 1.2) - entropy) * 0.08;
+    entropy += (Math.min(1, shannon(recent) * 0.85 + loss * 1.2) - entropy) * 0.08;
     ui();
     await new Promise((ok) => setTimeout(ok, 380));
   }
@@ -239,6 +263,61 @@ setInterval(() => {
     scene.remove(o); o.geometry.dispose(); o.material.dispose();
   }
 }, 25000);
+
+// ---------- traceability: persistent entropy trace + event log ----------
+let hist = [];
+try { hist = JSON.parse(localStorage.getItem("js_hist") || "[]"); } catch {}
+const events = [];
+let lastZone = 0;
+const zoneOf = (e) => (e > 0.62 ? 2 : e > 0.4 ? 1 : 0);
+setInterval(() => {
+  if (stat.reduce((a, s) => a + s.attempts, 0) < 10) return;
+  hist.push({ t: Date.now(), e: +entropy.toFixed(3) });
+  if (hist.length > 2400) hist = hist.slice(-2400);
+  try { localStorage.setItem("js_hist", JSON.stringify(hist)); } catch {}
+  const z = zoneOf(entropy);
+  if (z !== lastZone) {
+    const hhmm = new Date().toTimeString().slice(0, 8);
+    events.unshift(`${hhmm} ${z === 2 ? "▲ H " + entropy.toFixed(2) + " — DEGRADATION LIKELY" : z === 1 ? "◆ H " + entropy.toFixed(2) + " — ENTROPY RISING" : "● H " + entropy.toFixed(2) + " — BACK TO NOMINAL"}`);
+    if (events.length > 4) events.pop();
+    document.getElementById("events").innerHTML = events.join("<br/>");
+    lastZone = z;
+  }
+  drawTrace();
+}, 2000);
+
+const tl = document.getElementById("tl");
+const tx = tl.getContext("2d");
+function drawTrace() {
+  const r = tl.getBoundingClientRect();
+  const d = Math.min(devicePixelRatio || 1, 2);
+  if (tl.width !== r.width * d) { tl.width = r.width * d; tl.height = 54 * d; }
+  tx.setTransform(d, 0, 0, d, 0, 0);
+  const w = r.width, h = 54;
+  tx.clearRect(0, 0, w, h);
+  const y4 = (e) => h - 4 - e * (h - 8);
+  tx.fillStyle = "rgba(255,84,73,0.06)"; tx.fillRect(0, 0, w, y4(0.62));
+  tx.fillStyle = "rgba(255,194,51,0.05)"; tx.fillRect(0, y4(0.62), w, y4(0.4) - y4(0.62));
+  [0.4, 0.62].forEach((th) => {
+    tx.strokeStyle = "rgba(233,237,226,0.12)"; tx.setLineDash([2, 4]);
+    tx.beginPath(); tx.moveTo(0, y4(th)); tx.lineTo(w, y4(th)); tx.stroke(); tx.setLineDash([]);
+  });
+  if (hist.length < 2) return;
+  const t0 = hist[0].t, t1 = hist[hist.length - 1].t || t0 + 1;
+  const x4 = (t) => ((t - t0) / Math.max(1, t1 - t0)) * w;
+  // session gaps (>60s) drawn as breaks — honest record, no fake continuity
+  for (let i = 1; i < hist.length; i++) {
+    const a = hist[i - 1], b = hist[i];
+    if (b.t - a.t > 60000) continue;
+    const z = zoneOf(b.e);
+    tx.strokeStyle = z === 2 ? COL.alert : z === 1 ? COL.warn : COL.acc;
+    tx.lineWidth = 1.2;
+    tx.beginPath(); tx.moveTo(x4(a.t), y4(a.e)); tx.lineTo(x4(b.t), y4(b.e)); tx.stroke();
+  }
+  const last = hist[hist.length - 1];
+  tx.fillStyle = COL.ink; tx.fillRect(x4(last.t) - 1.5, y4(last.e) - 1.5, 3, 3);
+}
+drawTrace();
 
 let gox = 0, goy = 0;
 setInterval(() => {

@@ -69,14 +69,34 @@ function synthetic() {
   return out;
 }
 
-// RFC 3550-style smoothed jitter; entropy saturates instead of pinning red
+// Shannon entropy over the latency window — H(X) = -Σ P(x)·log2 P(x), normalized.
+// Predictable latency → mass in few bins → H≈0 (healthy). Chaotic → H≈1 (stress).
+// Bins span p5–p95 so a single outlier can't flatten the histogram.
+export function shannon(values, k = 12) {
+  if (values.length < 8) return 0;
+  const s = [...values].sort((a, b) => a - b);
+  // bins anchored to the baseline (p50): healthy latency concentrates near the
+  // median (few bins, low H); only real chaos spreads across the range
+  const p50 = s[Math.floor(s.length / 2)];
+  const lo = p50 * 0.6, hi = p50 * 1.8;
+  if (hi - lo < 1e-9) return 0;
+  const hist = new Array(k).fill(0);
+  for (const v of values) {
+    const c = Math.min(hi, Math.max(lo, v));
+    hist[Math.floor(((c - lo) / (hi - lo)) * (k - 1e-9))]++;
+  }
+  let h = 0;
+  for (const c of hist) if (c) { const p = c / values.length; h -= p * Math.log2(p); }
+  return h / Math.log2(k);
+}
+
 function analyze(series) {
   const ok = series.filter((s) => !s.lost).map((s) => s.ms);
   let J = 0;
   for (let i = 1; i < ok.length; i++) J += (Math.abs(ok[i] - ok[i - 1]) - J) / 16;
   const loss = series.filter((s) => s.lost).length / series.length;
   const p50 = [...ok].sort((a, b) => a - b)[Math.floor(ok.length / 2)] || 0;
-  const entropy = Math.min(1, 0.12 + 0.55 * (J / (J + 45)) + loss * 1.4);
+  const entropy = Math.min(1, shannon(ok) * 0.85 + loss * 1.5);
   return { J, loss, entropy, p50 };
 }
 
@@ -253,11 +273,11 @@ ${lossTicks}
 <animateTransform attributeName="transform" type="translate" from="${X0} 0" to="${X1} 0" dur="11s" repeatCount="indefinite"/>
 </line></g>
 ${stats ? txt(X1, 204, stats, { size: 9, ls: 1.5, anchor: "end", fill: T.faint }) : ""}
-${txt(X0, 348, `JITTERSCOPE · GITHUB CI PROBE · ${date} UTC`, { size: 10 })}
+${txt(X0, 348, `JITTERSCOPE · GITHUB CI PROBE · SHANNON H · ${date} UTC`, { size: 10 })}
 <g>${txt(X1 - eW - 78, 348, "ENTROPY", { size: 10 })}
 <rect x="${X1 - eW - 4}" y="340" width="${eW}" height="6" fill="none" stroke="${T.hair}" stroke-width="0.6"/>
 <rect x="${X1 - eW - 4}" y="340" width="${Math.max(3, eW * m.entropy).toFixed(1)}" height="6" fill="${eCol}">
-<animate attributeName="width" values="${frames.map((f) => { const w16 = f.slice(-16); let J = 0; for (let i = 1; i < w16.length; i++) J += (Math.abs(w16[i] - w16[i - 1]) - J) / 16; return Math.max(3, eW * Math.min(1, 0.12 + 0.55 * (J / (J + 45)) + m.loss * 1.4)).toFixed(1); }).join(";")}" dur="${DUR}s" repeatCount="indefinite" calcMode="linear"/>
+<animate attributeName="width" values="${frames.map((f) => Math.max(3, eW * Math.min(1, shannon(f.slice(-16)) * 0.85 + m.loss * 1.5)).toFixed(1)).join(";")}" dur="${DUR}s" repeatCount="indefinite" calcMode="linear"/>
 </rect>
 ${txt(X1 + 4, 348, m.entropy.toFixed(2).slice(1), { size: 10, fill: eCol, ls: 0.5, anchor: "end" })}</g>
 ${sections}

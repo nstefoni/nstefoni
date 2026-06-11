@@ -7,7 +7,7 @@
   "tagline_left": "MOBILE · WEB · END-TO-END",
   "tagline_right": "MOUNTAINS IN BETWEEN",
   "site": "https://nstefoni.github.io/nstefoni/",
-  "theme": "daydream",
+  "theme": "acid",
   "themes": {
     "daydream": {
       "bg": "#232e36",
@@ -21,6 +21,45 @@
       "ghostA": "#ff4530",
       "ghostB": "#5da8a4",
       "envFill": "rgba(232,137,60,0.08)"
+    },
+    "klein": {
+      "bg": "#0d1430",
+      "ink": "#f0ead8",
+      "dim": "#7d87b0",
+      "faint": "rgba(240,234,216,0.13)",
+      "hair": "rgba(240,234,216,0.25)",
+      "accent": "#ff7a3d",
+      "alert": "#ff4530",
+      "warn": "#ffb340",
+      "ghostA": "#ff4530",
+      "ghostB": "#4fd6c4",
+      "envFill": "rgba(255,122,61,0.07)"
+    },
+    "acid": {
+      "bg": "#191c1e",
+      "ink": "#e9ede2",
+      "dim": "#8b948f",
+      "faint": "rgba(233,237,226,0.13)",
+      "hair": "rgba(233,237,226,0.25)",
+      "accent": "#c8f04c",
+      "alert": "#ff5449",
+      "warn": "#ffc233",
+      "ghostA": "#ff5449",
+      "ghostB": "#54d8c8",
+      "envFill": "rgba(200,240,76,0.07)"
+    },
+    "riso": {
+      "bg": "#1c1722",
+      "ink": "#f2e9dc",
+      "dim": "#968ca0",
+      "faint": "rgba(242,233,220,0.13)",
+      "hair": "rgba(242,233,220,0.25)",
+      "accent": "#ff5ea0",
+      "alert": "#ff4530",
+      "warn": "#ffb340",
+      "ghostA": "#ff4530",
+      "ghostB": "#3fc9b6",
+      "envFill": "rgba(255,94,160,0.07)"
     },
     "espresso": {
       "bg": "#160f09",

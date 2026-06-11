@@ -1,3 +1,6 @@
 name = "jitterscope"
-main = "worker.js"
+main = "build/worker/shim.mjs"
 compatibility_date = "2025-01-01"
+
+[build]
+command = "worker-build --release"
