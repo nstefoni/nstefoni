@@ -51,6 +51,9 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;pa
 #evlist{flex:1;overflow:hidden;padding:8px 12px;font-size:10px;letter-spacing:.12em;line-height:2.05;color:var(--dim)}
 #evlist .t{color:var(--ink)}
 .legend{display:flex;gap:10px;font-size:9px;letter-spacing:.15em}
+.help{display:inline-block;width:14px;height:14px;border:1px solid var(--hair);border-radius:50%;text-align:center;line-height:13px;color:var(--dim);cursor:help;position:relative;font-size:9px;letter-spacing:0}
+.help:hover{border-color:var(--ink);color:var(--ink)}
+.help:hover::after{content:attr(data-tip);position:absolute;right:-4px;top:20px;background:#1a1e22;border:1px solid var(--hair);padding:8px 10px;width:240px;white-space:normal;z-index:9;color:var(--ink);text-transform:none;letter-spacing:.04em;line-height:1.6;font-size:10px;text-align:left}
 @media (max-width:900px){
   body{overflow:auto}
   #app{height:auto}
@@ -87,12 +90,12 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;pa
 </div>
 <div id="grid">
   <section class="panel" id="p-wave">
-    <div class="ptitle"><span>RTT CHANNELS · HELICORDER</span><span class="legend" id="legend"></span></div>
+    <div class="ptitle"><span>RTT CHANNELS · HELICORDER · <b id="lastS" style="letter-spacing:.05em">—</b></span><span class="legend" id="legend"></span><span class="help" data-tip="La latencia de tu conexión hacia 4 redes distintas, en vivo. Cada línea es una ruta; un pico = lag momentáneo; un punto rojo abajo = paquete perdido. La cinta se desplaza como un sismógrafo: lo nuevo entra por la derecha.">?</span></div>
     <div class="chart"><canvas id="cv-wave"></canvas></div>
   </section>
   <div id="p-side">
     <section class="panel" id="p-gauge">
-      <div class="ptitle"><span>SHANNON ENTROPY</span><span><b id="gv">.00</b></span></div>
+      <div class="ptitle"><span>SHANNON ENTROPY</span><span style="display:flex;gap:8px;align-items:center"><b id="gv">.00</b><span class="help" data-tip="El índice de caos de tu conexión (0–1). Latencia predecible = aguja a la izquierda (sana). Valores erráticos = aguja hacia el rojo. Es la señal temprana: la entropía sube ANTES de que algo se caiga.">?</span></span></div>
       <div class="chart"><canvas id="cv-gauge"></canvas></div>
     </section>
     <section class="panel" id="p-events">
@@ -101,15 +104,15 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;pa
     </section>
   </div>
   <section class="panel" id="p-fall">
-    <div class="ptitle"><span>DISTRIBUTION WATERFALL · 3D · LAST 64 WINDOWS</span><span>OLD → NOW</span></div>
+    <div class="ptitle"><span>DISTRIBUTION WATERFALL · 3D · LAST 64 WINDOWS</span><span style="display:flex;gap:8px;align-items:center"><span>OLD → NOW</span><span class="help" data-tip="La forma de tu latencia a través del tiempo. Una montaña angosta y verde = red ordenada y predecible. Si la masa se desparrama hacia los bordes rojos, la distribución se está volviendo caótica — eso ES la entropía subiendo. Probá INJECT FAULT y mirala deformarse.">?</span></span></div>
     <div class="chart"><canvas id="cv-fall"></canvas></div>
   </section>
   <section class="panel" id="p-hist">
-    <div class="ptitle"><span>RTT DISTRIBUTION · H BINS</span><span>0.6×P50 → 1.8×P50</span></div>
+    <div class="ptitle"><span>RTT DISTRIBUTION · H BINS</span><span style="display:flex;gap:8px;align-items:center"><span>0.6×P50 → 1.8×P50</span><span class="help" data-tip="Dónde caen tus últimas 96 mediciones respecto de tu latencia típica (P50, línea punteada). Una sola barra alta = predecible. Barras repartidas = caos. De este histograma sale el número H del gauge.">?</span></span></div>
     <div class="chart"><canvas id="cv-hist"></canvas></div>
   </section>
   <section class="panel" id="p-trace">
-    <div class="ptitle"><span>ENTROPY TRACE · FULL HISTORY · PERSISTS ACROSS VISITS</span><span id="tspan"></span></div>
+    <div class="ptitle"><span>ENTROPY TRACE · FULL HISTORY · PERSISTS ACROSS VISITS</span><span style="display:flex;gap:8px;align-items:center"><span id="tspan"></span><span class="help" data-tip="El registro histórico de H — verde estable, ámbar subiendo, rojo peligro. Se guarda en tu navegador: cerrá y volvé mañana, tu historia sigue acá. Los cortes son gaps entre sesiones.">?</span></span></div>
     <div class="chart"><canvas id="tl"></canvas></div>
   </section>
 </div>
@@ -213,8 +216,8 @@ const dangerCol = (b) => { const d = Math.abs(b - baseBin); return d <= 1 ? COL.
       if (!ctl.on[i]) { vals.push(-1); continue; }
       let v = await probe(i);
       if (v != null && simActive()) {
-        v = v * (0.6 + Math.random() * 1.7) + (Math.random() < 0.18 ? v * 2.2 : 0);
-        if (Math.random() < 0.1) v = null;
+        v = v * (0.4 + Math.random() * 3.1) + (Math.random() < 0.25 ? v * 4 : 0);
+        if (Math.random() < 0.22) v = null;
       }
       feed(i, v);
       if (v != null && stat[i].p50 > 0) { recent.push(v / stat[i].p50); if (recent.length > 96) recent.shift(); }
@@ -261,7 +264,11 @@ function paintCtrls() {
 }
 chBtns.forEach((b, i) => b.addEventListener("click", () => { ctl.on[i] = !ctl.on[i]; paintCtrls(); ui(); }));
 rateB.addEventListener("click", () => { ctl.rate = (ctl.rate + 1) % 3; paintCtrls(); ui(); });
-simB.addEventListener("click", () => { ctl.simUntil = Date.now() + 20000; paintCtrls(); ui(); setTimeout(paintCtrls, 20500); });
+simB.addEventListener("click", () => {
+  ctl.simUntil = simActive() ? 0 : Date.now() + 20000;
+  paintCtrls(); ui();
+  setTimeout(paintCtrls, 20600);
+});
 paintCtrls();
 setInterval(() => (document.getElementById("clock").textContent = new Date().toISOString().slice(11, 19) + " UTC"), 1000);
 
@@ -293,7 +300,12 @@ function ui() {
   document.getElementById("evlist").innerHTML = events.slice(0, 9).map((ev) =>
     `<span class="t">${hhmm(ev.t)}</span> <span style="color:${zoneCol(ev.z)}">${ev.z === 2 ? "▲" : ev.z === 1 ? "◆" : "●"}</span> H ${String(ev.e).slice(1)} ${ev.z === 2 ? "DEGRADATION LIKELY" : ev.z === 1 ? "ENTROPY RISING" : "BACK TO NOMINAL"}`
   ).join("<br/>") || "—";
-  if (track.length > 1) document.getElementById("tspan").textContent = hhmm(track[0].t) + " → " + hhmm(track[track.length - 1].t);
+  if (track.length > 1) {
+    document.getElementById("tspan").textContent = hhmm(track[0].t) + " → " + hhmm(track[track.length - 1].t);
+    const ls = document.getElementById("lastS");
+    ls.textContent = "● LIVE " + hhmm(track[track.length - 1].t);
+    ls.style.color = sim ? COL.warn : col;
+  }
 }
 
 // ---------- 2D chart helpers: crisp, retina-aware, zero projection ----------
