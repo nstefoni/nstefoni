@@ -118,7 +118,9 @@ import * as THREE from "https://esm.sh/three@0.160.0";
 
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const COL = { bg: css("--bg"), ink: css("--ink"), dim: css("--dim"), acc: css("--acc"), alert: css("--alert"), warn: css("--warn") };
-const CH = ["#c8f04c", "#54d8e0", "#b48cff", "#6aa6ff"];
+// curated: monochrome traces (identity = lane + label, like real helicorders),
+// one accent (lime) for the metric, semantic amber/red only when something happens
+const CH = ["#e9ede2", "rgba(233,237,226,0.72)", "rgba(233,237,226,0.52)", "rgba(233,237,226,0.38)"];
 
 const PROBES = [
   { name: "GH",  url: "https://api.github.com/", mode: "cors" },
@@ -201,7 +203,7 @@ const zoneOf = (e) => (e > 0.62 ? 2 : e > 0.4 ? 1 : 0);
 const zoneCol = (z) => (z === 2 ? COL.alert : z === 1 ? COL.warn : COL.acc);
 const hhmm = (t) => new Date(t).toTimeString().slice(0, 8);
 const baseBin = Math.floor(((1.0 - 0.6) / 1.2) * BINS);
-const dangerCol = (b) => { const d = Math.abs(b - baseBin); return d <= 1 ? COL.acc : d <= 3 ? COL.warn : COL.alert; };
+const dangerCol = (b) => { const d = Math.abs(b - baseBin); return d <= 1 ? COL.acc : d <= 3 ? "rgba(233,237,226,0.5)" : COL.alert; };
 
 (async function loop() {
   for (;;) {
@@ -397,10 +399,10 @@ function drawGauge() {
     g.beginPath(); g.arc(cx, cy, R, A0 + (A1 - A0) * f0, A0 + (A1 - A0) * f1); g.stroke();
     g.globalAlpha = 1;
   };
-  arc(0, 1, COL.dim, 10, 0.12);
-  arc(0, 0.4, COL.acc, 4.5, 0.85);
-  arc(0.4, 0.62, COL.warn, 4.5, 0.85);
-  arc(0.62, 1, COL.alert, 4.5, 0.85);
+  arc(0, 1, COL.dim, 9, 0.14);
+  arc(0, 0.4, COL.acc, 3.5, 0.7);
+  arc(0.4, 0.62, COL.warn, 3.5, 0.35);
+  arc(0.62, 1, COL.alert, 3.5, 0.45);
   for (let k = 0; k <= 10; k++) {
     const an = A0 + (A1 - A0) * (k / 10);
     g.strokeStyle = "rgba(233,237,226,0.3)"; g.lineWidth = 1;
