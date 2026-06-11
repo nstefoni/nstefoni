@@ -135,9 +135,10 @@ import * as THREE from "https://esm.sh/three@0.160.0";
 
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const COL = { bg: css("--bg"), ink: css("--ink"), dim: css("--dim"), acc: css("--acc"), alert: css("--alert"), warn: css("--warn") };
-// curated: monochrome traces (identity = lane + label, like real helicorders),
-// one accent (lime) for the metric, semantic amber/red only when something happens
-const CH = ["#e9ede2", "rgba(233,237,226,0.72)", "rgba(233,237,226,0.52)", "rgba(233,237,226,0.38)"];
+// channel quartet: analogous cool arc (teal→blue→lavender→rose) at equal
+// saturation/luminance — one family, instantly tellable apart. warm hues
+// (lime/amber/red) stay exclusively semantic.
+const CH = ["#93d6c8", "#7fb2dd", "#a89ade", "#d9a0b6"];
 
 const PROBES = [
   { name: "GH",  url: "https://api.github.com/", mode: "cors" },
