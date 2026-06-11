@@ -55,7 +55,7 @@ canvas:active{cursor:grabbing}
   </div>
   <a class="gh" href="https://github.com/nstefoni">GITHUB ↗</a>
 </div>
-<div class="hint" id="hint">DRAG TO ORBIT · SCROLL TO ZOOM</div>
+<div class="hint" id="hint">DRAG TO ORBIT · SCROLL TO ZOOM · HISTORY SINKS BELOW</div>
 <script type="module">
 import * as THREE from "https://esm.sh/three@0.160.0";
 
@@ -64,7 +64,7 @@ const COL = { bg: css("--bg"), ink: css("--ink"), dim: css("--dim"), acc: css("-
 
 const PROBES = [
   { name: "GH",  url: "https://api.github.com/", mode: "cors" },
-  { name: "NPM", url: "https://registry.npmjs.org/", mode: "cors" },
+  { name: "NPM", url: "https://registry.npmjs.org/-/ping", mode: "no-cors" },
   { name: "CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js", mode: "cors" },
   { name: "VRC", url: "https://vercel.com/favicon.ico", mode: "no-cors" },
 ];
@@ -222,6 +222,24 @@ cv.addEventListener("touchmove", (e) => {
 }, { passive: true });
 cv.addEventListener("touchend", () => (pinch = 0));
 
+// strata: every ~25s the main ring leaves a frozen copy that sinks and fades —
+// the column below the arena is the history of the connection
+const strata = [];
+setInterval(() => {
+  if (stat[0].count < 10) return;
+  const g = new THREE.BufferGeometry();
+  const arr = new Float32Array((M + 1) * 3);
+  arr.set(rings[0].geometry.attributes.position.array);
+  g.setAttribute("position", new THREE.BufferAttribute(arr, 3));
+  const col = entropy > 0.62 ? COL.alert : entropy > 0.4 ? COL.warn : COL.acc;
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(col), transparent: true, opacity: 0.4 }));
+  scene.add(l); strata.push(l);
+  if (strata.length > 16) {
+    const o = strata.shift();
+    scene.remove(o); o.geometry.dispose(); o.material.dispose();
+  }
+}, 25000);
+
 let gox = 0, goy = 0;
 setInterval(() => {
   const k = entropy * 2.4;
@@ -247,6 +265,11 @@ function frame() {
   rings.forEach((l, i) => fillRing(l, i));
   glow.forEach((l, i) => fillRing(l, i));
   fillRing(ghostA, 0, gox, goy); fillRing(ghostB, 0, -gox, -goy);
+
+  strata.forEach((l) => {
+    l.position.y -= 0.014;
+    l.material.opacity = Math.max(0.05, 0.4 + l.position.y * 0.012);
+  });
 
   const eCol = entropy > 0.62 ? COL.alert : entropy > 0.4 ? COL.warn : COL.acc;
   core.material.color.set(eCol);
