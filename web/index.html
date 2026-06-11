@@ -713,9 +713,13 @@ hwSpawn = (lane, v) => {
 };
 // density: a high-frequency auxiliary prober feeds the highway with real
 // packets (~4 cars/s) — the metric pipeline stays untouched
-let hwRR = 0;
+let hwRR = 0, hwAccum = 0;
 setInterval(() => {
   if (viz !== 2 || document.hidden || cars.length > 110) return;
+  // traffic density follows the RATE control too
+  hwAccum += 90;
+  if (hwAccum < [700, 350, 180][ctl.rate]) return;
+  hwAccum = 0;
   const lane = hwRR++ % 4;
   if (!ctl.on[lane]) return;
   const p = PROBES[lane];
@@ -734,7 +738,7 @@ setInterval(() => {
       setTimeout(() => hwSpawn && hwSpawn(lane, v), delay);
     })
     .catch(() => { clearTimeout(to); setTimeout(() => hwSpawn && hwSpawn(lane, null), 200); });
-}, 260);
+}, 90);
 let hwLast = performance.now();
 function hwUpdate() {
   const now = performance.now();
