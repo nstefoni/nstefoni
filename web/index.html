@@ -707,10 +707,34 @@ hwSpawn = (lane, v) => {
   }));
   m.scale.x = len;
   m.position.set(HW_X0, 0, LANES_Z[lane]);
-  m.userData = { lost };
+  m.userData = { lost, lane };
   hwScene.add(m);
   cars.push(m);
 };
+// density: a high-frequency auxiliary prober feeds the highway with real
+// packets (~4 cars/s) — the metric pipeline stays untouched
+let hwRR = 0;
+setInterval(() => {
+  if (viz !== 2 || document.hidden || cars.length > 110) return;
+  const lane = hwRR++ % 4;
+  if (!ctl.on[lane]) return;
+  const p = PROBES[lane];
+  const tSend = performance.now();
+  const ac = new AbortController();
+  const to = setTimeout(() => ac.abort(), 4000);
+  fetch(p.url + (p.url.includes("?") ? "&" : "?") + "t=" + Math.random(), { mode: p.mode, cache: "no-store", signal: ac.signal })
+    .then(() => {
+      clearTimeout(to);
+      let v = performance.now() - tSend;
+      if (simActive()) {
+        v = v * (0.4 + Math.random() * 3.1) + (Math.random() < 0.25 ? v * 4 : 0);
+        if (Math.random() < 0.22) v = null;
+      }
+      const delay = v == null ? 400 + Math.random() * 900 : Math.max(0, tSend + v - performance.now());
+      setTimeout(() => hwSpawn && hwSpawn(lane, v), delay);
+    })
+    .catch(() => { clearTimeout(to); setTimeout(() => hwSpawn && hwSpawn(lane, null), 200); });
+}, 260);
 let hwLast = performance.now();
 function hwUpdate() {
   const now = performance.now();
@@ -728,6 +752,18 @@ function hwUpdate() {
       hwScene.remove(c);
       c.material.dispose();
       cars.splice(i, 1);
+    }
+  }
+  // car-following: no car drives through the one ahead — platoons stack and
+  // the accordion propagates backwards, which is how real jams form
+  const byLane = [[], [], [], []];
+  for (const c of cars) byLane[c.userData.lane].push(c);
+  for (const list of byLane) {
+    list.sort((a, b) => b.position.x - a.position.x);
+    for (let k = 1; k < list.length; k++) {
+      const lead = list[k - 1], f = list[k];
+      const minX = lead.position.x - (lead.scale.x + f.scale.x) / 2 - 0.7;
+      if (f.position.x > minX) f.position.x = minX;
     }
   }
   orbited(hwCam, 20, 9 + Math.sin(now / 4200) * 0.7, 26, -14, 0, 0);
