@@ -2,7 +2,7 @@
 
 la regla madre: **el color es informacion, nunca decoracion**. tres familias de color con roles q no se pisan:
 
-1. **identidad de canal** (cuarteto analogo frio): GH verde-agua `#93d6c8` · NPM azul niebla `#7fb2dd` · CDN lavanda `#a89ade` · VRC rosa ceniza `#d9a0b6`. misma saturacion y luminosidad = mismo peso visual, ninguno grita; matices contiguos = una familia. los calidos (lima/ambar/rojo) quedan EXCLUSIVOS para semantica — el rojo conserva todo su poder de alarma.
+1. **identidad de canal** (adn de la card, nada foraneo): GH lima `#c8f04c` (el acento de marca) · NPM cian `#54d8c8` (el fantasma del rgb-split del nombre) · CDN tinta `#e9ede2` · VRC dim `#8b948f`. los cuatro colores ya viven en la card del perfil — dashboard y card son el mismo organismo. rojo/ambar quedan EXCLUSIVOS para semantica.
 2. **semantica de estado**: lima = nominal · ambar `#ffc233` = advisory · rojo `#ff5449` = alert. SOLO para estados, nunca para identidad.
 3. **neutros de chasis**: fondo `--bg #191c1e` · panel `--panel #101316` · chrome `rgba(20,23,26,.92)` · tinta `#e9ede2` · dim `#8b948f` · hairline `rgba(...,0.25)`.
 

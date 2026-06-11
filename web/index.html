@@ -139,10 +139,10 @@ import * as THREE from "https://esm.sh/three@0.160.0";
 
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const COL = { bg: css("--bg"), ink: css("--ink"), dim: css("--dim"), acc: css("--acc"), alert: css("--alert"), warn: css("--warn") };
-// channel quartet: analogous cool arc (teal→blue→lavender→rose) at equal
-// saturation/luminance — one family, instantly tellable apart. warm hues
-// (lime/amber/red) stay exclusively semantic.
-const CH = ["#93d6c8", "#7fb2dd", "#a89ade", "#d9a0b6"];
+// channel colors drawn from the CARD's own dna: lime (brand accent),
+// ghost-cyan (the name's rgb split), ink, dim — nothing foreign. red stays
+// exclusively semantic (loss/alert).
+const CH = ["#c8f04c", "#54d8c8", "#e9ede2", "#8b948f"];
 
 const PROBES = [
   { name: "GH",  url: "https://api.github.com/", mode: "cors" },
