@@ -78,6 +78,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;pa
     <button class="cbtn" id="simB">INJECT FAULT</button>
     <a class="cbtn" href="https://github.com/nstefoni" style="text-decoration:none">GITHUB ↗</a>
     <span id="clock">--:--:-- UTC</span>
+    <span id="fps" style="font-size:9px;letter-spacing:.15em;color:var(--dim)">--</span>
   </div>
 </header>
 <div id="banner">
@@ -130,7 +131,7 @@ const PROBES = [
 ];
 const stat = PROBES.map(() => ({ p50: 40, jit: 0, attempts: 0, fails: 0, win: [], lastLost: false }));
 let entropy = 0.05;
-const ctl = { on: [true, true, true, true], rate: 1, rates: [2000, 900, 380], rateNames: ["SLOW", "NORM", "FAST"], simUntil: 0 };
+const ctl = { on: [true, true, true, true], rate: 2, rates: [2000, 900, 380], rateNames: ["SLOW", "NORM", "FAST"], simUntil: 0 };
 const simActive = () => Date.now() < ctl.simUntil;
 
 const CAP = 1600;
@@ -561,9 +562,13 @@ const BOOT_MSGS = [
 ];
 BOOT_MSGS.forEach((m, i) => setTimeout(() => (document.getElementById("bsub").textContent = m), i * 850));
 
-let fc = 0;
+let fc = 0, fps = 60, lastF = performance.now();
 function frame() {
   fc++;
+  const nowF = performance.now();
+  fps += (1000 / Math.max(1, nowF - lastF) - fps) * 0.05;
+  lastF = nowF;
+  if (fc % 30 === 0) document.getElementById("fps").textContent = fps.toFixed(0) + " FPS";
   try {
     if (!document.hidden) {
       drawWave();
