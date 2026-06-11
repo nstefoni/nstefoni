@@ -4,6 +4,6 @@
 
 <br/>
 
-<sub><code>this card is rendered for your visit — fresh probes from the edge on every view · <a href="https://nstefoni.github.io/nstefoni/">open the live jitterscope ↗</a></code></sub>
+<sub><code>rendered on request: rust on cloudflare's edge probing 4 targets — shannon entropy over the rtt window · want YOUR connection measured? <a href="https://nstefoni.github.io/nstefoni/">open the live jitterscope ↗</a></code></sub>
 
 </div>

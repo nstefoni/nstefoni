@@ -510,7 +510,7 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
         c0 = sy0 - 6.0,
         c1 = sy1 + 4.0,
         stats_t = txt(x1, 204.0, &stats, TxtOpt { size: 9, fill: &t.faint, ls: 1.5, anchor: "end", weight: 400 }),
-        foot = txt(x0, 348.0, &format!("JITTERSCOPE · RUST EDGE PROBE · SHANNON H · {} UTC", date), TxtOpt { size: 10, fill: &t.dim, ls: 2.5, anchor: "start", weight: 400 }),
+        foot = txt(x0, 348.0, &format!("RUST PROBE · CLOUDFLARE EDGE → GH·NPM·CF·VRC · {} UTC", date), TxtOpt { size: 10, fill: &t.dim, ls: 2.5, anchor: "start", weight: 400 }),
         ent_label = txt(x1 - e_w - 78.0, 348.0, "ENTROPY", TxtOpt { size: 10, fill: &t.dim, ls: 2.5, anchor: "start", weight: 400 }),
         ebx = x1 - e_w - 4.0,
         ew0 = (e_w * m.entropy).max(3.0),
