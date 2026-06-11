@@ -354,7 +354,9 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
 
     let date = {
         let s = String::from(js_sys::Date::new_0().to_iso_string());
-        s[..16.min(s.len())].replace('T', " ")
+        // seconds included: lets anyone verify with their own eyes that two
+        // consecutive views are two distinct measurements
+        s[..19.min(s.len())].replace('T', " ")
     };
     let e_w = 90.0;
     // site calibration: edge probes pay DNS/TLS per request, noise floor ≈ .75
