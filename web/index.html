@@ -4,14 +4,14 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>NICOLAS STEFONI · JITTERSCOPE</title>
-<meta name="description" content="Live network jitter arena — measured from your connection, right now."/>
+<meta name="description" content="Live network jitter corridor — your connection, measured and recorded."/>
 <link rel="stylesheet" href="theme.css"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;background:var(--bg);overflow:hidden}
 body{font-family:ui-monospace,'SF Mono','Cascadia Mono','JetBrains Mono','Roboto Mono',Menlo,Consolas,monospace;color:var(--ink)}
-canvas{position:fixed;inset:0;display:block;cursor:grab}
-canvas:active{cursor:grabbing}
+canvas#c{position:fixed;inset:0;display:block;cursor:grab}
+canvas#c:active{cursor:grabbing}
 .ui{position:fixed;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:28px 36px;pointer-events:none;z-index:2}
 .ui.top{top:0}.ui.bot{bottom:0;align-items:flex-end}
 .lockup .name{font-size:clamp(18px,3.2vw,30px);font-weight:500;letter-spacing:.45em;white-space:nowrap}
@@ -23,12 +23,15 @@ canvas:active{cursor:grabbing}
 .ent .val{font-size:12px;color:var(--acc)}
 .stats{font-size:10px;letter-spacing:.18em;color:var(--dim);line-height:2.1;max-width:70vw}
 .stats b{color:var(--ink);font-weight:500}
+#events{color:var(--dim);font-size:9px;letter-spacing:.15em;line-height:1.9}
 #tag{color:var(--acc);margin-bottom:2px}
 .gh{pointer-events:auto;font-size:10px;letter-spacing:.3em;color:var(--dim);text-decoration:none;border:1px solid var(--hair);padding:10px 16px;white-space:nowrap}
 .gh:hover{color:var(--ink);border-color:var(--ink)}
 .cur{display:inline-block;width:6px;height:11px;background:var(--acc);vertical-align:-1px;animation:bl 1.15s steps(2,jump-none) infinite}
 @keyframes bl{50%{opacity:0}}
-.hint{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);font-size:10px;letter-spacing:.3em;color:var(--dim);z-index:2;opacity:.8;transition:opacity 1s}
+.hint{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);font-size:10px;letter-spacing:.3em;color:var(--dim);z-index:2;white-space:nowrap}
+#mode{color:var(--acc)}
+.tlwrap{position:fixed;left:36px;right:36px;bottom:118px;z-index:2;pointer-events:none}
 .corner{position:fixed;width:22px;height:22px;border:1px solid var(--hair);z-index:2}
 .c1{top:14px;left:14px;border-right:0;border-bottom:0}.c2{top:14px;right:14px;border-left:0;border-bottom:0}
 .c3{bottom:14px;right:14px;border-left:0;border-top:0}.c4{bottom:14px;left:14px;border-right:0;border-top:0}
@@ -50,17 +53,17 @@ canvas:active{cursor:grabbing}
 </div>
 <div class="ui bot">
   <div class="stats">
-    <div id="events" style="color:var(--dim);font-size:9px;letter-spacing:.15em;line-height:1.9;min-height:0"></div>
+    <div id="events"></div>
     <div id="tag">● WARMING UP PROBES…</div>
     <div id="stats">&nbsp;</div>
   </div>
   <a class="gh" href="https://github.com/nstefoni">GITHUB ↗</a>
 </div>
-<div style="position:fixed;left:36px;right:36px;bottom:118px;z-index:2;pointer-events:none">
+<div class="tlwrap">
   <div style="font-size:9px;letter-spacing:.3em;color:var(--dim);margin-bottom:5px">ENTROPY TRACE · PERSISTS ACROSS VISITS</div>
   <canvas id="tl" style="width:100%;height:54px;display:block;opacity:.95"></canvas>
 </div>
-<div class="hint" id="hint">DRAG TO ORBIT · SCROLL TO ZOOM · HISTORY SINKS BELOW</div>
+<div class="hint"><span id="mode">● LIVE</span> · SCROLL = TIME TRAVEL · DRAG = ORBIT · DOUBLE-CLICK = NOW</div>
 <script type="module">
 import * as THREE from "https://esm.sh/three@0.160.0";
 
@@ -73,35 +76,58 @@ const PROBES = [
   { name: "CDN", url: "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js", mode: "cors" },
   { name: "VRC", url: "https://vercel.com/favicon.ico", mode: "no-cors" },
 ];
-const M = 240;
-const buf = PROBES.map(() => new Array(M).fill(null));
-const stat = PROBES.map(() => ({ p50: 40, jit: 0, attempts: 0, fails: 0, count: 0 }));
-let head = 0, entropy = 0.05;
+const stat = PROBES.map(() => ({ p50: 40, jit: 0, attempts: 0, fails: 0, win: [] }));
+let entropy = 0.05;
+
+// ---------- the record: every round is a permanent cross-section ----------
+// track[i] = { t: wall clock, u: active seconds (gaps compressed), vals: [4], e }
+const CAP = 1600;
+let track = [];
+try {
+  track = JSON.parse(localStorage.getItem("js_track") || "[]");
+  if (!Array.isArray(track)) track = [];
+} catch {}
+let events = [];
+try { events = JSON.parse(localStorage.getItem("js_events") || "[]"); } catch {}
+
+function appendRound(vals) {
+  const t = Date.now();
+  const prev = track[track.length - 1];
+  let u = 0, gap = false;
+  if (prev) {
+    const dt = (t - prev.t) / 1000;
+    gap = dt > 60;
+    u = prev.u + Math.min(dt, 10) + (gap ? 14 : 0);
+  }
+  track.push({ t, u, vals, e: +entropy.toFixed(3), gap });
+  if (track.length > CAP) track = track.slice(-CAP);
+  try { localStorage.setItem("js_track", JSON.stringify(track)); } catch {}
+}
 
 async function probe(i) {
-  const p = PROBES[i]; const t0 = performance.now(); stat[i].attempts++;
+  const p = PROBES[i];
+  const t0 = performance.now();
+  stat[i].attempts++;
   try {
-    const ac = new AbortController(); const to = setTimeout(() => ac.abort(), 4000);
-    await fetch(p.url + "?t=" + Math.random(), { mode: p.mode, cache: "no-store", signal: ac.signal });
-    clearTimeout(to); return performance.now() - t0;
+    const ac = new AbortController();
+    const to = setTimeout(() => ac.abort(), 4000);
+    await fetch(p.url + (p.url.includes("?") ? "&" : "?") + "t=" + Math.random(), { mode: p.mode, cache: "no-store", signal: ac.signal });
+    clearTimeout(to);
+    return performance.now() - t0;
   } catch { stat[i].fails++; return null; }
 }
-function push(i, v) {
-  buf[i][head] = v;
-  if (v != null) stat[i].count++;
-  const ok = buf[i].filter((x) => x != null);
-  if (ok.length > 3) {
-    const s = [...ok].sort((a, b) => a - b);
-    stat[i].p50 = s[Math.floor(s.length / 2)];
-    let J = 0;
-    for (let k = 1; k < ok.length; k++) J += (Math.abs(ok[k] - ok[k - 1]) - J) / 16;
-    stat[i].jit = J;
-  }
+function feed(i, v) {
+  if (v == null) return;
+  const w = stat[i].win;
+  w.push(v); if (w.length > 60) w.shift();
+  const s = [...w].sort((a, b) => a - b);
+  stat[i].p50 = s[Math.floor(s.length / 2)];
+  let J = 0;
+  for (let k = 1; k < w.length; k++) J += (Math.abs(w[k] - w[k - 1]) - J) / 16;
+  stat[i].jit = J;
 }
 const lossOf = (i) => (stat[i].attempts > 3 ? stat[i].fails / stat[i].attempts : 0);
 
-// Shannon entropy over the sliding window (values normalized per probe by its
-// p50 so different baselines share one distribution): predictable → 0, chaos → 1
 function shannon(values, k = 12) {
   if (values.length < 8) return 0;
   const s = [...values].sort((a, b) => a - b);
@@ -118,180 +144,65 @@ function shannon(values, k = 12) {
   return h / Math.log2(k);
 }
 const recent = [];
+let lastZone = 0;
+const zoneOf = (e) => (e > 0.62 ? 2 : e > 0.4 ? 1 : 0);
+const zoneCol = (z) => (z === 2 ? COL.alert : z === 1 ? COL.warn : COL.acc);
 
 (async function loop() {
-  for (let r = 0; ; r++) {
-    const i = r % PROBES.length;
-    const v = await probe(i);
-    push(i, v);
-    if (v != null && stat[i].p50 > 0) { recent.push(v / stat[i].p50); if (recent.length > 96) recent.shift(); }
-    if (i === PROBES.length - 1) head = (head + 1) % M;
+  for (;;) {
+    const vals = [];
+    for (let i = 0; i < PROBES.length; i++) {
+      const v = await probe(i);
+      feed(i, v);
+      if (v != null && stat[i].p50 > 0) { recent.push(v / stat[i].p50); if (recent.length > 96) recent.shift(); }
+      vals.push(v == null ? null : Math.round(v));
+      await new Promise((ok) => setTimeout(ok, 90));
+    }
     const loss = PROBES.reduce((a, _, k) => a + lossOf(k), 0) / PROBES.length;
-    entropy += (Math.min(1, shannon(recent) * 0.85 + loss * 1.2) - entropy) * 0.08;
-    ui();
-    await new Promise((ok) => setTimeout(ok, 380));
+    entropy += (Math.min(1, shannon(recent) * 0.85 + loss * 1.2) - entropy) * 0.1;
+    if (stat.reduce((a, s) => a + s.attempts, 0) >= 8) {
+      appendRound(vals);
+      const z = zoneOf(entropy);
+      if (z !== lastZone) {
+        events.unshift({ t: Date.now(), z, e: +entropy.toFixed(2) });
+        events = events.slice(0, 30);
+        try { localStorage.setItem("js_events", JSON.stringify(events)); } catch {}
+        addPylon(track[track.length - 1], z);
+        lastZone = z;
+      }
+      rebuild = true;
+    }
+    ui(); drawTrace();
+    await new Promise((ok) => setTimeout(ok, 900));
   }
 })();
 
+function hhmm(t) { return new Date(t).toTimeString().slice(0, 8); }
 function ui() {
   const e = document.getElementById("efill"), v = document.getElementById("eval"), tag = document.getElementById("tag");
-  const col = entropy > 0.62 ? COL.alert : entropy > 0.4 ? COL.warn : COL.acc;
+  const col = zoneCol(zoneOf(entropy));
   e.style.width = Math.max(3, entropy * 100) + "%"; e.style.background = col;
   v.textContent = entropy.toFixed(2).slice(1); v.style.color = col;
-  const warm = stat.reduce((a, s) => a + s.attempts, 0) < 10;
+  const warm = stat.reduce((a, s) => a + s.attempts, 0) < 8;
   tag.textContent = warm ? "● WARMING UP PROBES…" :
     entropy > 0.62 ? "▲ HIGH ENTROPY — DEGRADATION LIKELY" :
     entropy > 0.4 ? "◆ ENTROPY RISING" : "● ALL SIGNALS NOMINAL";
   tag.style.color = warm ? COL.dim : col;
   document.getElementById("stats").innerHTML = PROBES.map((p, i) =>
-    `${p.name} <b>${stat[i].count ? stat[i].p50.toFixed(0) + "ms" : "··"}</b> ±${stat[i].jit.toFixed(1)}`
+    `${p.name} <b>${stat[i].win.length ? stat[i].p50.toFixed(0) + "ms" : "··"}</b> ±${stat[i].jit.toFixed(1)}`
   ).join(" &nbsp;·&nbsp; ") + ` &nbsp;·&nbsp; LOSS <b>${(PROBES.reduce((a, _, k) => a + lossOf(k), 0) / 4 * 100).toFixed(0)}%</b>`;
+  document.getElementById("events").innerHTML = events.slice(0, 4).map((ev) =>
+    `${hhmm(ev.t)} ${ev.z === 2 ? "▲" : ev.z === 1 ? "◆" : "●"} H ${String(ev.e).slice(1)}`
+  ).join("<br/>");
 }
 
-// ---------- arena ----------
-const cv = document.getElementById("c");
-const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
-renderer.setClearColor(new THREE.Color(COL.bg), 1);
-const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(new THREE.Color(COL.bg), 90, 260);
-const cam = new THREE.PerspectiveCamera(42, 1, 0.1, 600);
-
-const RADII = [30, 38, 46, 54];
-function devOf(v, i) {
-  if (v == null) return 0;
-  const p = Math.max(stat[i].p50, 12);
-  return Math.max(-7, Math.min(16, ((v - p) / p) * 9));
-}
-function ringLine(color, opacity) {
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.BufferAttribute(new Float32Array((M + 1) * 3), 3));
-  return new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity }));
-}
-const ringCols = [COL.ink, COL.acc, COL.dim, COL.dim];
-const rings = PROBES.map((_, i) => { const l = ringLine(ringCols[i], i < 2 ? 0.9 : 0.4); scene.add(l); return l; });
-const glow = PROBES.map((_, i) => {
-  const l = ringLine(i < 2 ? ringCols[i] : COL.dim, 0.12);
-  l.material.blending = THREE.AdditiveBlending; l.scale.setScalar(1.004); scene.add(l); return l;
-});
-const ghostA = ringLine(COL.alert, 0), ghostB = ringLine(COL.acc, 0);
-ghostA.material.blending = ghostB.material.blending = THREE.AdditiveBlending;
-scene.add(ghostA, ghostB);
-
-function fillRing(line, i, ox = 0, oy = 0) {
-  const a = line.geometry.attributes.position.array;
-  const r0 = RADII[i];
-  for (let k = 0; k <= M; k++) {
-    const idx = k % M;
-    const age = (idx - head - 1 + M) % M;
-    const ang = (idx / M) * Math.PI * 2;
-    const v = buf[i][idx];
-    const dev = devOf(v, i);
-    const r = r0 + dev * 0.45;
-    a[k * 3] = Math.cos(ang) * r + ox;
-    a[k * 3 + 1] = dev + oy;
-    a[k * 3 + 2] = Math.sin(ang) * r;
-    void age;
-  }
-  line.geometry.attributes.position.needsUpdate = true;
-}
-
-// entropy core
-const core = new THREE.Mesh(
-  new THREE.IcosahedronGeometry(7, 1),
-  new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.acc), wireframe: true, transparent: true, opacity: 0.85 })
-);
-scene.add(core);
-const coreInner = new THREE.Mesh(
-  new THREE.IcosahedronGeometry(3.4, 0),
-  new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.ink), wireframe: true, transparent: true, opacity: 0.5 })
-);
-scene.add(coreInner);
-
-// radar sweep at the write head
-const sweepGeo = new THREE.BufferGeometry();
-sweepGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array([0, 0, 0, 0, 0, 0]), 3));
-const sweep = new THREE.Line(sweepGeo, new THREE.LineBasicMaterial({ color: new THREE.Color(COL.acc), transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending }));
-scene.add(sweep);
-
-const polar = new THREE.PolarGridHelper(70, 12, 6, 64, new THREE.Color(COL.dim), new THREE.Color(COL.dim));
-polar.material.transparent = true; polar.material.opacity = 0.08; polar.position.y = -10; scene.add(polar);
-
-const starGeo = new THREE.BufferGeometry();
-const SP = 700, sp = new Float32Array(SP * 3);
-for (let i = 0; i < SP; i++) {
-  const r = 150 + Math.random() * 150, th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
-  sp[i * 3] = r * Math.sin(ph) * Math.cos(th); sp[i * 3 + 1] = r * Math.cos(ph) * 0.6; sp[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
-}
-starGeo.setAttribute("position", new THREE.BufferAttribute(sp, 3));
-scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: new THREE.Color(COL.dim), size: 0.7, transparent: true, opacity: 0.5 })));
-
-// ---------- orbit (hand-rolled, with inertia + autorotate) ----------
-let theta = 0.8, phi = 0.95, radius = 105, vT = 0, vP = 0, dragging = false, lastX = 0, lastY = 0, idle = 0;
-cv.addEventListener("pointerdown", (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; idle = 0; document.getElementById("hint").style.opacity = 0; });
-addEventListener("pointerup", () => (dragging = false));
-addEventListener("pointermove", (e) => {
-  if (!dragging) return;
-  vT = (e.clientX - lastX) * 0.005; vP = (e.clientY - lastY) * 0.003;
-  theta -= vT * 1.6; phi -= vP * 1.6;
-  lastX = e.clientX; lastY = e.clientY; idle = 0;
-});
-cv.addEventListener("wheel", (e) => { e.preventDefault(); radius = Math.max(45, Math.min(220, radius + e.deltaY * 0.12)); idle = 0; }, { passive: false });
-let pinch = 0;
-cv.addEventListener("touchmove", (e) => {
-  if (e.touches.length === 2) {
-    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-    if (pinch) radius = Math.max(45, Math.min(220, radius - (d - pinch) * 0.3));
-    pinch = d; idle = 0;
-  }
-}, { passive: true });
-cv.addEventListener("touchend", () => (pinch = 0));
-
-// strata: every ~25s the main ring leaves a frozen copy that sinks and fades —
-// the column below the arena is the history of the connection
-const strata = [];
-setInterval(() => {
-  if (stat[0].count < 10) return;
-  const g = new THREE.BufferGeometry();
-  const arr = new Float32Array((M + 1) * 3);
-  arr.set(rings[0].geometry.attributes.position.array);
-  g.setAttribute("position", new THREE.BufferAttribute(arr, 3));
-  const col = entropy > 0.62 ? COL.alert : entropy > 0.4 ? COL.warn : COL.acc;
-  const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(col), transparent: true, opacity: 0.4 }));
-  scene.add(l); strata.push(l);
-  if (strata.length > 16) {
-    const o = strata.shift();
-    scene.remove(o); o.geometry.dispose(); o.material.dispose();
-  }
-}, 25000);
-
-// ---------- traceability: persistent entropy trace + event log ----------
-let hist = [];
-try { hist = JSON.parse(localStorage.getItem("js_hist") || "[]"); } catch {}
-const events = [];
-let lastZone = 0;
-const zoneOf = (e) => (e > 0.62 ? 2 : e > 0.4 ? 1 : 0);
-setInterval(() => {
-  if (stat.reduce((a, s) => a + s.attempts, 0) < 10) return;
-  hist.push({ t: Date.now(), e: +entropy.toFixed(3) });
-  if (hist.length > 2400) hist = hist.slice(-2400);
-  try { localStorage.setItem("js_hist", JSON.stringify(hist)); } catch {}
-  const z = zoneOf(entropy);
-  if (z !== lastZone) {
-    const hhmm = new Date().toTimeString().slice(0, 8);
-    events.unshift(`${hhmm} ${z === 2 ? "▲ H " + entropy.toFixed(2) + " — DEGRADATION LIKELY" : z === 1 ? "◆ H " + entropy.toFixed(2) + " — ENTROPY RISING" : "● H " + entropy.toFixed(2) + " — BACK TO NOMINAL"}`);
-    if (events.length > 4) events.pop();
-    document.getElementById("events").innerHTML = events.join("<br/>");
-    lastZone = z;
-  }
-  drawTrace();
-}, 2000);
-
+// ---------- 2d entropy trace panel ----------
 const tl = document.getElementById("tl");
 const tx = tl.getContext("2d");
 function drawTrace() {
   const r = tl.getBoundingClientRect();
   const d = Math.min(devicePixelRatio || 1, 2);
-  if (tl.width !== r.width * d) { tl.width = r.width * d; tl.height = 54 * d; }
+  if (tl.width !== Math.round(r.width * d)) { tl.width = Math.round(r.width * d); tl.height = 54 * d; }
   tx.setTransform(d, 0, 0, d, 0, 0);
   const w = r.width, h = 54;
   tx.clearRect(0, 0, w, h);
@@ -302,30 +213,173 @@ function drawTrace() {
     tx.strokeStyle = "rgba(233,237,226,0.12)"; tx.setLineDash([2, 4]);
     tx.beginPath(); tx.moveTo(0, y4(th)); tx.lineTo(w, y4(th)); tx.stroke(); tx.setLineDash([]);
   });
-  if (hist.length < 2) return;
-  const t0 = hist[0].t, t1 = hist[hist.length - 1].t || t0 + 1;
-  const x4 = (t) => ((t - t0) / Math.max(1, t1 - t0)) * w;
-  // session gaps (>60s) drawn as breaks — honest record, no fake continuity
-  for (let i = 1; i < hist.length; i++) {
-    const a = hist[i - 1], b = hist[i];
-    if (b.t - a.t > 60000) continue;
-    const z = zoneOf(b.e);
-    tx.strokeStyle = z === 2 ? COL.alert : z === 1 ? COL.warn : COL.acc;
+  if (track.length < 2) return;
+  const u0 = track[0].u, u1 = track[track.length - 1].u || 1;
+  const x4 = (u) => ((u - u0) / Math.max(1, u1 - u0)) * w;
+  for (let i = 1; i < track.length; i++) {
+    if (track[i].gap) continue;
+    tx.strokeStyle = zoneCol(zoneOf(track[i].e));
     tx.lineWidth = 1.2;
-    tx.beginPath(); tx.moveTo(x4(a.t), y4(a.e)); tx.lineTo(x4(b.t), y4(b.e)); tx.stroke();
+    tx.beginPath(); tx.moveTo(x4(track[i - 1].u), y4(track[i - 1].e)); tx.lineTo(x4(track[i].u), y4(track[i].e)); tx.stroke();
   }
-  const last = hist[hist.length - 1];
-  tx.fillStyle = COL.ink; tx.fillRect(x4(last.t) - 1.5, y4(last.e) - 1.5, 3, 3);
 }
 drawTrace();
 
-let gox = 0, goy = 0;
-setInterval(() => {
-  const k = entropy * 2.4;
-  gox = (Math.random() - 0.5) * 2.4 * k; goy = (Math.random() - 0.5) * 1.6 * k;
-  const op = Math.min(0.4, Math.max(0, entropy - 0.15) * 0.7);
-  ghostA.material.opacity = op; ghostB.material.opacity = op;
-}, 95);
+// ---------- 3d time corridor ----------
+const cv = document.getElementById("c");
+const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
+renderer.setClearColor(new THREE.Color(COL.bg), 1);
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(new THREE.Color(COL.bg), 110, 320);
+const cam = new THREE.PerspectiveCamera(46, 1, 0.1, 800);
+
+const ZPS = 1.35;            // world units per active-second
+const LANES = [-19, -6.5, 6.5, 19];
+const laneCols = [COL.ink, COL.acc, COL.dim, COL.dim];
+
+function mkLane(color, opacity) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(CAP * 3), 3));
+  g.setDrawRange(0, 0);
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity }));
+  l.frustumCulled = false;
+  scene.add(l);
+  return l;
+}
+const lanes = LANES.map((_, i) => mkLane(laneCols[i], i === 1 ? 0.95 : 0.55));
+
+// entropy ribbon on the floor — vertex-colored by zone
+const ribGeo = new THREE.BufferGeometry();
+ribGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(CAP * 2 * 3), 3));
+ribGeo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(CAP * 2 * 3), 3));
+ribGeo.setIndex(new THREE.BufferAttribute(new Uint32Array((CAP - 1) * 6), 1));
+const ribbon = new THREE.Mesh(ribGeo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5, side: THREE.DoubleSide }));
+ribbon.frustumCulled = false;
+scene.add(ribbon);
+
+const grid = new THREE.GridHelper(900, 90, new THREE.Color(COL.dim), new THREE.Color(COL.dim));
+grid.material.transparent = true; grid.material.opacity = 0.05; grid.position.y = -13;
+scene.add(grid);
+
+// entropy core rides the "now" end
+const core = new THREE.Mesh(new THREE.IcosahedronGeometry(5.4, 1),
+  new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.acc), wireframe: true, transparent: true, opacity: 0.85 }));
+scene.add(core);
+
+// time ticks + event pylons (sprite labels)
+function label(text, color) {
+  const c = document.createElement("canvas");
+  c.width = 256; c.height = 48;
+  const g = c.getContext("2d");
+  g.font = "500 22px Menlo, monospace";
+  g.fillStyle = color;
+  g.textBaseline = "middle";
+  g.fillText(text, 8, 24);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
+  sp.scale.set(17, 3.2, 1);
+  return sp;
+}
+const marks = new THREE.Group(); scene.add(marks);
+let lastTickU = -999;
+function addTick(pt) {
+  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-26, -12.5, 0), new THREE.Vector3(26, -12.5, 0)]);
+  const ln = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(COL.dim), transparent: true, opacity: 0.35 }));
+  const sp = label(hhmm(pt.t), COL.dim);
+  sp.position.set(33, -12, 0);
+  const grp = new THREE.Group();
+  grp.add(ln, sp); grp.userData.u = pt.u;
+  marks.add(grp);
+}
+function addPylon(pt, z) {
+  if (!pt) return;
+  const col = zoneCol(z);
+  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -12, 0), new THREE.Vector3(0, 16, 0)]);
+  const ln = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(col), transparent: true, opacity: 0.8 }));
+  const sp = label(`${hhmm(pt.t)} H ${String(pt.e.toFixed(2)).slice(1)}`, col);
+  sp.position.set(1, 17.5, 0);
+  const grp = new THREE.Group();
+  grp.add(ln, sp); grp.userData.u = pt.u;
+  marks.add(grp);
+  if (marks.children.length > 70) marks.remove(marks.children[0]);
+}
+// restore marks from saved track/events
+for (const pt of track) {
+  if (pt.u - lastTickU >= 60) { addTick(pt); lastTickU = pt.u; }
+}
+for (const ev of [...events].reverse()) {
+  const pt = track.find((p) => Math.abs(p.t - ev.t) < 3000);
+  if (pt) addPylon(pt, ev.z);
+}
+
+const yOf = (v, i) => {
+  if (v == null) return -10;
+  const p = Math.max(stat[i].p50, 12);
+  return Math.max(-9, Math.min(18, ((v - p) / p) * 9));
+};
+
+let rebuild = true;
+function rebuildGeometry() {
+  if (!track.length) return;
+  const uNow = track[track.length - 1].u;
+  for (let li = 0; li < 4; li++) {
+    const a = lanes[li].geometry.attributes.position.array;
+    for (let k = 0; k < track.length; k++) {
+      const pt = track[k];
+      a[k * 3] = LANES[li];
+      a[k * 3 + 1] = yOf(pt.vals[li], li);
+      a[k * 3 + 2] = -(uNow - pt.u) * ZPS;
+    }
+    lanes[li].geometry.setDrawRange(0, track.length);
+    lanes[li].geometry.attributes.position.needsUpdate = true;
+  }
+  const rp = ribGeo.attributes.position.array;
+  const rc = ribGeo.attributes.color.array;
+  const idx = ribGeo.index.array;
+  const tmp = new THREE.Color();
+  for (let k = 0; k < track.length; k++) {
+    const pt = track[k];
+    const z = -(uNow - pt.u) * ZPS;
+    rp[k * 6] = -24; rp[k * 6 + 1] = -12.4; rp[k * 6 + 2] = z;
+    rp[k * 6 + 3] = 24; rp[k * 6 + 4] = -12.4; rp[k * 6 + 5] = z;
+    tmp.set(zoneCol(zoneOf(pt.e)));
+    const dimmed = pt.gap ? 0.06 : 0.55 + pt.e * 0.45;
+    rc[k * 6] = tmp.r * dimmed; rc[k * 6 + 1] = tmp.g * dimmed; rc[k * 6 + 2] = tmp.b * dimmed;
+    rc[k * 6 + 3] = tmp.r * dimmed * 0.4; rc[k * 6 + 4] = tmp.g * dimmed * 0.4; rc[k * 6 + 5] = tmp.b * dimmed * 0.4;
+  }
+  for (let k = 0; k < track.length - 1; k++) {
+    const o = k * 6, v = k * 2;
+    if (track[k + 1].gap) { idx[o] = idx[o + 1] = idx[o + 2] = idx[o + 3] = idx[o + 4] = idx[o + 5] = 0; continue; }
+    idx[o] = v; idx[o + 1] = v + 1; idx[o + 2] = v + 2;
+    idx[o + 3] = v + 1; idx[o + 4] = v + 3; idx[o + 5] = v + 2;
+  }
+  ribGeo.setDrawRange(0, Math.max(0, (track.length - 1) * 6));
+  ribGeo.attributes.position.needsUpdate = true;
+  ribGeo.attributes.color.needsUpdate = true;
+  ribGeo.index.needsUpdate = true;
+  // ticks: add when a new minute of active time passes
+  const lastPt = track[track.length - 1];
+  if (lastPt.u - lastTickU >= 60) { addTick(lastPt); lastTickU = lastPt.u; }
+  marks.children.forEach((grp) => { grp.position.z = -(uNow - grp.userData.u) * ZPS; });
+}
+
+// ---------- navigation: scroll = time travel, drag = orbit ----------
+let viewBack = 0;          // active-seconds behind "now"
+let theta = 0.35, phi = 1.05, radius = 70, vT = 0, dragging = false, lastX = 0, lastY = 0;
+cv.addEventListener("pointerdown", (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
+addEventListener("pointerup", () => (dragging = false));
+addEventListener("pointermove", (e) => {
+  if (!dragging) return;
+  theta -= (e.clientX - lastX) * 0.006; phi -= (e.clientY - lastY) * 0.004;
+  phi = Math.max(0.2, Math.min(1.45, phi));
+  lastX = e.clientX; lastY = e.clientY;
+});
+cv.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const span = track.length ? track[track.length - 1].u - track[0].u : 0;
+  viewBack = Math.max(0, Math.min(span, viewBack + e.deltaY * 0.22));
+}, { passive: false });
+cv.addEventListener("dblclick", () => (viewBack = 0));
+addEventListener("keydown", (e) => { if (e.key === "End") viewBack = 0; });
 
 function resize() {
   renderer.setSize(innerWidth, innerHeight, false);
@@ -336,44 +390,36 @@ addEventListener("resize", resize); resize();
 
 let t = 0;
 function frame() {
-  t += 0.016; idle += 0.016;
-  if (!dragging) { theta += vT; vT *= 0.95; phi -= vP; vP *= 0.95; }
-  if (idle > 3) theta += 0.0016;
-  phi = Math.max(0.18, Math.min(1.35, phi));
+  t += 0.016;
+  if (rebuild) { rebuildGeometry(); rebuild = false; }
+  if (!dragging) { theta += vT; vT *= 0.94; }
 
-  rings.forEach((l, i) => fillRing(l, i));
-  glow.forEach((l, i) => fillRing(l, i));
-  fillRing(ghostA, 0, gox, goy); fillRing(ghostB, 0, -gox, -goy);
-
-  strata.forEach((l) => {
-    l.position.y -= 0.014;
-    l.material.opacity = Math.max(0.05, 0.4 + l.position.y * 0.012);
-  });
-
-  const eCol = entropy > 0.62 ? COL.alert : entropy > 0.4 ? COL.warn : COL.acc;
-  core.material.color.set(eCol);
-  const breathe = 1 + Math.sin(t * 2.2) * 0.05 + entropy * 0.25;
-  core.scale.setScalar(breathe);
-  coreInner.scale.setScalar(1 + Math.sin(t * 3.1) * 0.08);
+  const anchorZ = -viewBack * ZPS;
+  const e = entropy;
+  core.material.color.set(zoneCol(zoneOf(e)));
+  core.scale.setScalar(1 + Math.sin(t * 2.2) * 0.05 + e * 0.3);
   core.rotation.y = t * 0.3; core.rotation.x = t * 0.12;
-  coreInner.rotation.y = -t * 0.5;
-  if (entropy > 0.5) core.position.set((Math.random() - 0.5) * entropy * 2, (Math.random() - 0.5) * entropy * 1.4, (Math.random() - 0.5) * entropy * 2);
-  else core.position.set(0, 0, 0);
+  core.position.set(0, 3, 0);
+  if (e > 0.5) core.position.add(new THREE.Vector3((Math.random() - 0.5) * e * 2, (Math.random() - 0.5) * e, 0));
 
-  const ang = ((head % M) / M) * Math.PI * 2;
-  const sa = sweep.geometry.attributes.position.array;
-  sa[0] = Math.cos(ang) * 10; sa[1] = 0; sa[2] = Math.sin(ang) * 10;
-  sa[3] = Math.cos(ang) * 62; sa[4] = 0; sa[5] = Math.sin(ang) * 62;
-  sweep.geometry.attributes.position.needsUpdate = true;
-  sweep.material.color.set(eCol);
+  const mode = document.getElementById("mode");
+  if (viewBack > 1 && track.length) {
+    const uNow = track[track.length - 1].u;
+    const target = track.find((p) => uNow - p.u <= viewBack) || track[0];
+    mode.textContent = `⏪ VIEWING ${hhmm(target.t)}`;
+    mode.style.color = COL.warn;
+  } else {
+    mode.textContent = "● LIVE";
+    mode.style.color = COL.acc;
+  }
 
-  const shake = entropy > 0.55 ? (Math.random() - 0.5) * entropy * 1.2 : 0;
+  const shake = e > 0.55 && viewBack < 1 ? (Math.random() - 0.5) * e * 1.1 : 0;
   cam.position.set(
     Math.sin(theta) * Math.sin(phi) * radius + shake,
-    Math.cos(phi) * radius * 0.85,
-    Math.cos(theta) * Math.sin(phi) * radius + shake * 0.6
+    Math.cos(phi) * radius * 0.8 + 4,
+    anchorZ + Math.cos(theta) * Math.sin(phi) * radius + shake * 0.5
   );
-  cam.lookAt(0, 0, 0);
+  cam.lookAt(0, 0, anchorZ - 14);
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
