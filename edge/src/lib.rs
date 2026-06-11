@@ -357,7 +357,8 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
         s[..16.min(s.len())].replace('T', " ")
     };
     let e_w = 90.0;
-    let e_col = if m.entropy > 0.62 { &t.alert } else if m.entropy > 0.4 { &t.warn } else { &t.accent };
+    // site calibration: edge probes pay DNS/TLS per request, noise floor ≈ .75
+    let e_col = if m.entropy > 0.9 { &t.alert } else if m.entropy > 0.78 { &t.warn } else { &t.accent };
     let mut stats: Vec<String> = Vec::new();
     if let Some(c) = gh.1 {
         stats.push(format!("CONTRIB {}", c));
