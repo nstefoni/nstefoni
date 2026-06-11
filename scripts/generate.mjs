@@ -238,6 +238,17 @@ function card(series, m, gh) {
     sections += txt(170, y, v, { size: 12, fill: T.ink, ls: 1.2 });
     y += 26;
   }
+  if (cfg.building && cfg.building.length) {
+    y += 14;
+    sections += `<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="${T.hair}" stroke-width="1"/>`;
+    y += 40;
+    sections += header("03 / BUILDING");
+    for (const [k, v] of cfg.building) {
+      sections += txt(X0, y, k, { size: 12, fill: T.accent, ls: 2, w: 500 });
+      sections += txt(170, y, v, { size: 12, fill: T.ink, ls: 1.2 });
+      y += 26;
+    }
+  }
   const H = y + 28;
   const tick = 14, mg = 18;
 

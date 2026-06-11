@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>NICOLAS STEFONI · JITTERSCOPE</title>
-<meta name="description" content="Live network jitter corridor — your connection, measured and recorded."/>
+<meta name="description" content="Network early-warning station — your connection, measured and recorded live."/>
 <link rel="stylesheet" href="theme.css"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -21,16 +21,16 @@ canvas#c:active{cursor:grabbing}
 .ent .bar{width:140px;height:6px;border:1px solid var(--hair);margin:8px 0 6px auto}
 .ent .fill{height:100%;width:4%;background:var(--acc);transition:width .4s steps(6)}
 .ent .val{font-size:12px;color:var(--acc)}
-.stats{font-size:10px;letter-spacing:.18em;color:var(--dim);line-height:2.1;max-width:70vw}
+.stats{font-size:10px;letter-spacing:.18em;color:var(--dim);line-height:2.1;max-width:62vw}
 .stats b{color:var(--ink);font-weight:500}
 #events{color:var(--dim);font-size:9px;letter-spacing:.15em;line-height:1.9}
 #tag{color:var(--acc);margin-bottom:2px}
+.right{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 .gh{pointer-events:auto;font-size:10px;letter-spacing:.3em;color:var(--dim);text-decoration:none;border:1px solid var(--hair);padding:10px 16px;white-space:nowrap}
 .gh:hover{color:var(--ink);border-color:var(--ink)}
+.hint{font-size:9px;letter-spacing:.25em;color:var(--dim);white-space:nowrap}
 .cur{display:inline-block;width:6px;height:11px;background:var(--acc);vertical-align:-1px;animation:bl 1.15s steps(2,jump-none) infinite}
 @keyframes bl{50%{opacity:0}}
-.hint{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);font-size:10px;letter-spacing:.3em;color:var(--dim);z-index:2;white-space:nowrap}
-#mode{color:var(--acc)}
 .tlwrap{position:fixed;left:36px;right:36px;bottom:118px;z-index:2;pointer-events:none}
 .corner{position:fixed;width:22px;height:22px;border:1px solid var(--hair);z-index:2}
 .c1{top:14px;left:14px;border-right:0;border-bottom:0}.c2{top:14px;right:14px;border-left:0;border-bottom:0}
@@ -43,7 +43,7 @@ canvas#c:active{cursor:grabbing}
 <div class="ui top">
   <div class="lockup">
     <div class="name">NICOLAS STEFONI</div>
-    <div class="sub">JITTERSCOPE — MEASURING YOUR CONNECTION <span class="cur"></span></div>
+    <div class="sub">JITTERSCOPE STATION 01 — MEASURING YOUR CONNECTION <span class="cur"></span></div>
   </div>
   <div class="ent">
     <div class="lab">SHANNON ENTROPY</div>
@@ -57,13 +57,15 @@ canvas#c:active{cursor:grabbing}
     <div id="tag">● WARMING UP PROBES…</div>
     <div id="stats">&nbsp;</div>
   </div>
-  <a class="gh" href="https://github.com/nstefoni">GITHUB ↗</a>
+  <div class="right">
+    <div class="hint">DRAG = ORBIT · SCROLL = ZOOM</div>
+    <a class="gh" href="https://github.com/nstefoni">GITHUB ↗</a>
+  </div>
 </div>
 <div class="tlwrap">
-  <div style="font-size:9px;letter-spacing:.3em;color:var(--dim);margin-bottom:5px">ENTROPY TRACE · PERSISTS ACROSS VISITS</div>
+  <div style="font-size:9px;letter-spacing:.3em;color:var(--dim);margin-bottom:5px">ENTROPY TRACE · FULL HISTORY · PERSISTS ACROSS VISITS</div>
   <canvas id="tl" style="width:100%;height:54px;display:block;opacity:.95"></canvas>
 </div>
-<div class="hint"><span id="mode">● LIVE</span> · SCROLL = TIME TRAVEL · DRAG = ORBIT · DOUBLE-CLICK = NOW</div>
 <script type="module">
 import * as THREE from "https://esm.sh/three@0.160.0";
 
@@ -79,14 +81,9 @@ const PROBES = [
 const stat = PROBES.map(() => ({ p50: 40, jit: 0, attempts: 0, fails: 0, win: [] }));
 let entropy = 0.05;
 
-// ---------- the record: every round is a permanent cross-section ----------
-// track[i] = { t: wall clock, u: active seconds (gaps compressed), vals: [4], e }
 const CAP = 1600;
 let track = [];
-try {
-  track = JSON.parse(localStorage.getItem("js_track") || "[]");
-  if (!Array.isArray(track)) track = [];
-} catch {}
+try { track = JSON.parse(localStorage.getItem("js_track") || "[]"); if (!Array.isArray(track)) track = []; } catch {}
 let events = [];
 try { events = JSON.parse(localStorage.getItem("js_events") || "[]"); } catch {}
 
@@ -128,25 +125,28 @@ function feed(i, v) {
 }
 const lossOf = (i) => (stat[i].attempts > 3 ? stat[i].fails / stat[i].attempts : 0);
 
-function shannon(values, k = 12) {
-  if (values.length < 8) return 0;
+const BINS = 12;
+function shannonHist(values, k = BINS) {
+  const hist = new Array(k).fill(0);
+  if (values.length < 8) return { h: 0, hist };
   const s = [...values].sort((a, b) => a - b);
   const p50 = s[Math.floor(s.length / 2)];
   const lo = p50 * 0.6, hi = p50 * 1.8;
-  if (hi - lo < 1e-9) return 0;
-  const hist = new Array(k).fill(0);
+  if (hi - lo < 1e-9) return { h: 0, hist };
   for (const v of values) {
     const c = Math.min(hi, Math.max(lo, v));
     hist[Math.floor(((c - lo) / (hi - lo)) * (k - 1e-9))]++;
   }
   let h = 0;
   for (const c of hist) if (c) { const p = c / values.length; h -= p * Math.log2(p); }
-  return h / Math.log2(k);
+  return { h: h / Math.log2(k), hist };
 }
 const recent = [];
+let liveHist = new Array(BINS).fill(0);
 let lastZone = 0;
 const zoneOf = (e) => (e > 0.62 ? 2 : e > 0.4 ? 1 : 0);
 const zoneCol = (z) => (z === 2 ? COL.alert : z === 1 ? COL.warn : COL.acc);
+const hhmm = (t) => new Date(t).toTimeString().slice(0, 8);
 
 (async function loop() {
   for (;;) {
@@ -158,8 +158,10 @@ const zoneCol = (z) => (z === 2 ? COL.alert : z === 1 ? COL.warn : COL.acc);
       vals.push(v == null ? null : Math.round(v));
       await new Promise((ok) => setTimeout(ok, 90));
     }
+    const { h, hist } = shannonHist(recent);
+    liveHist = hist;
     const loss = PROBES.reduce((a, _, k) => a + lossOf(k), 0) / PROBES.length;
-    entropy += (Math.min(1, shannon(recent) * 0.85 + loss * 1.2) - entropy) * 0.1;
+    entropy += (Math.min(1, h * 0.85 + loss * 1.2) - entropy) * 0.1;
     if (stat.reduce((a, s) => a + s.attempts, 0) >= 8) {
       appendRound(vals);
       const z = zoneOf(entropy);
@@ -167,17 +169,15 @@ const zoneCol = (z) => (z === 2 ? COL.alert : z === 1 ? COL.warn : COL.acc);
         events.unshift({ t: Date.now(), z, e: +entropy.toFixed(2) });
         events = events.slice(0, 30);
         try { localStorage.setItem("js_events", JSON.stringify(events)); } catch {}
-        addPylon(track[track.length - 1], z);
         lastZone = z;
       }
-      rebuild = true;
+      dirty = true;
     }
     ui(); drawTrace();
     await new Promise((ok) => setTimeout(ok, 900));
   }
 })();
 
-function hhmm(t) { return new Date(t).toTimeString().slice(0, 8); }
 function ui() {
   const e = document.getElementById("efill"), v = document.getElementById("eval"), tag = document.getElementById("tag");
   const col = zoneCol(zoneOf(entropy));
@@ -196,7 +196,6 @@ function ui() {
   ).join("<br/>");
 }
 
-// ---------- 2d entropy trace panel ----------
 const tl = document.getElementById("tl");
 const tx = tl.getContext("2d");
 function drawTrace() {
@@ -225,161 +224,214 @@ function drawTrace() {
 }
 drawTrace();
 
-// ---------- 3d time corridor ----------
+// ================= 3D STATION =================
 const cv = document.getElementById("c");
 const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
 renderer.setClearColor(new THREE.Color(COL.bg), 1);
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(new THREE.Color(COL.bg), 110, 320);
-const cam = new THREE.PerspectiveCamera(46, 1, 0.1, 800);
+scene.fog = new THREE.Fog(new THREE.Color(COL.bg), 130, 340);
+const cam = new THREE.PerspectiveCamera(40, 1, 0.1, 600);
 
-const ZPS = 1.35;            // world units per active-second
-const LANES = [-19, -6.5, 6.5, 19];
-const laneCols = [COL.ink, COL.acc, COL.dim, COL.dim];
+const hairMat = () => new THREE.LineBasicMaterial({ color: new THREE.Color(COL.dim), transparent: true, opacity: 0.45 });
+const faintMat = () => new THREE.LineBasicMaterial({ color: new THREE.Color(COL.dim), transparent: true, opacity: 0.16 });
 
-function mkLane(color, opacity) {
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(CAP * 3), 3));
-  g.setDrawRange(0, 0);
-  const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity }));
-  l.frustumCulled = false;
-  scene.add(l);
-  return l;
+function frameRect(w, h) {
+  const g = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-w / 2, -h / 2, 0), new THREE.Vector3(w / 2, -h / 2, 0),
+    new THREE.Vector3(w / 2, h / 2, 0), new THREE.Vector3(-w / 2, h / 2, 0),
+    new THREE.Vector3(-w / 2, -h / 2, 0),
+  ]);
+  return new THREE.Line(g, hairMat());
 }
-const lanes = LANES.map((_, i) => mkLane(laneCols[i], i === 1 ? 0.95 : 0.55));
-
-// entropy ribbon on the floor — vertex-colored by zone
-const ribGeo = new THREE.BufferGeometry();
-ribGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(CAP * 2 * 3), 3));
-ribGeo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(CAP * 2 * 3), 3));
-ribGeo.setIndex(new THREE.BufferAttribute(new Uint32Array((CAP - 1) * 6), 1));
-const ribbon = new THREE.Mesh(ribGeo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5, side: THREE.DoubleSide }));
-ribbon.frustumCulled = false;
-scene.add(ribbon);
-
-const grid = new THREE.GridHelper(900, 90, new THREE.Color(COL.dim), new THREE.Color(COL.dim));
-grid.material.transparent = true; grid.material.opacity = 0.05; grid.position.y = -13;
-scene.add(grid);
-
-// entropy core rides the "now" end
-const core = new THREE.Mesh(new THREE.IcosahedronGeometry(5.4, 1),
-  new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.acc), wireframe: true, transparent: true, opacity: 0.85 }));
-scene.add(core);
-
-// time ticks + event pylons (sprite labels)
-function label(text, color) {
+function makeLabel(text, color, scale = 1) {
   const c = document.createElement("canvas");
-  c.width = 256; c.height = 48;
+  c.width = 512; c.height = 44;
   const g = c.getContext("2d");
-  g.font = "500 22px Menlo, monospace";
+  g.font = "500 24px Menlo, monospace";
   g.fillStyle = color;
   g.textBaseline = "middle";
-  g.fillText(text, 8, 24);
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
-  sp.scale.set(17, 3.2, 1);
+  g.fillText(text.toUpperCase(), 4, 22);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+  sp.scale.set(24 * scale, 2.06 * scale, 1);
+  sp.center.set(0, 0.5);
   return sp;
 }
-const marks = new THREE.Group(); scene.add(marks);
-let lastTickU = -999;
-function addTick(pt) {
-  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-26, -12.5, 0), new THREE.Vector3(26, -12.5, 0)]);
-  const ln = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(COL.dim), transparent: true, opacity: 0.35 }));
-  const sp = label(hhmm(pt.t), COL.dim);
-  sp.position.set(33, -12, 0);
-  const grp = new THREE.Group();
-  grp.add(ln, sp); grp.userData.u = pt.u;
-  marks.add(grp);
-}
-function addPylon(pt, z) {
-  if (!pt) return;
-  const col = zoneCol(z);
-  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -12, 0), new THREE.Vector3(0, 16, 0)]);
-  const ln = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(col), transparent: true, opacity: 0.8 }));
-  const sp = label(`${hhmm(pt.t)} H ${String(pt.e.toFixed(2)).slice(1)}`, col);
-  sp.position.set(1, 17.5, 0);
-  const grp = new THREE.Group();
-  grp.add(ln, sp); grp.userData.u = pt.u;
-  marks.add(grp);
-  if (marks.children.length > 70) marks.remove(marks.children[0]);
-}
-// restore marks from saved track/events
-for (const pt of track) {
-  if (pt.u - lastTickU >= 60) { addTick(pt); lastTickU = pt.u; }
-}
-for (const ev of [...events].reverse()) {
-  const pt = track.find((p) => Math.abs(p.t - ev.t) < 3000);
-  if (pt) addPylon(pt, ev.z);
+function setLabel(sp, text, color) {
+  const c = sp.material.map.image;
+  const g = c.getContext("2d");
+  g.clearRect(0, 0, c.width, c.height);
+  g.font = "500 24px Menlo, monospace";
+  g.fillStyle = color;
+  g.textBaseline = "middle";
+  g.fillText(text.toUpperCase(), 4, 22);
+  sp.material.map.needsUpdate = true;
 }
 
-const yOf = (v, i) => {
-  if (v == null) return -10;
-  const p = Math.max(stat[i].p50, 12);
-  return Math.max(-9, Math.min(18, ((v - p) / p) * 9));
-};
+// ---- console platform ----
+const platform = new THREE.Mesh(
+  new THREE.BoxGeometry(108, 1.6, 50),
+  new THREE.MeshBasicMaterial({ color: new THREE.Color("#15181b") })
+);
+platform.position.y = -14.2;
+scene.add(platform);
+const pEdge = frameRect(108, 50);
+pEdge.rotation.x = -Math.PI / 2;
+pEdge.position.y = -13.35;
+scene.add(pEdge);
+const grid = new THREE.GridHelper(700, 70, new THREE.Color(COL.dim), new THREE.Color(COL.dim));
+grid.material.transparent = true; grid.material.opacity = 0.045; grid.position.y = -15;
+scene.add(grid);
 
-let rebuild = true;
-function rebuildGeometry() {
-  if (!track.length) return;
-  const uNow = track[track.length - 1].u;
-  for (let li = 0; li < 4; li++) {
-    const a = lanes[li].geometry.attributes.position.array;
-    for (let k = 0; k < track.length; k++) {
-      const pt = track[k];
-      a[k * 3] = LANES[li];
-      a[k * 3 + 1] = yOf(pt.vals[li], li);
-      a[k * 3 + 2] = -(uNow - pt.u) * ZPS;
-    }
-    lanes[li].geometry.setDrawRange(0, track.length);
-    lanes[li].geometry.attributes.position.needsUpdate = true;
-  }
-  const rp = ribGeo.attributes.position.array;
-  const rc = ribGeo.attributes.color.array;
-  const idx = ribGeo.index.array;
-  const tmp = new THREE.Color();
-  for (let k = 0; k < track.length; k++) {
-    const pt = track[k];
-    const z = -(uNow - pt.u) * ZPS;
-    rp[k * 6] = -24; rp[k * 6 + 1] = -12.4; rp[k * 6 + 2] = z;
-    rp[k * 6 + 3] = 24; rp[k * 6 + 4] = -12.4; rp[k * 6 + 5] = z;
-    tmp.set(zoneCol(zoneOf(pt.e)));
-    const dimmed = pt.gap ? 0.06 : 0.55 + pt.e * 0.45;
-    rc[k * 6] = tmp.r * dimmed; rc[k * 6 + 1] = tmp.g * dimmed; rc[k * 6 + 2] = tmp.b * dimmed;
-    rc[k * 6 + 3] = tmp.r * dimmed * 0.4; rc[k * 6 + 4] = tmp.g * dimmed * 0.4; rc[k * 6 + 5] = tmp.b * dimmed * 0.4;
-  }
-  for (let k = 0; k < track.length - 1; k++) {
-    const o = k * 6, v = k * 2;
-    if (track[k + 1].gap) { idx[o] = idx[o + 1] = idx[o + 2] = idx[o + 3] = idx[o + 4] = idx[o + 5] = 0; continue; }
-    idx[o] = v; idx[o + 1] = v + 1; idx[o + 2] = v + 2;
-    idx[o + 3] = v + 1; idx[o + 4] = v + 3; idx[o + 5] = v + 2;
-  }
-  ribGeo.setDrawRange(0, Math.max(0, (track.length - 1) * 6));
-  ribGeo.attributes.position.needsUpdate = true;
-  ribGeo.attributes.color.needsUpdate = true;
-  ribGeo.index.needsUpdate = true;
-  // ticks: add when a new minute of active time passes
-  const lastPt = track[track.length - 1];
-  if (lastPt.u - lastTickU >= 60) { addTick(lastPt); lastTickU = lastPt.u; }
-  marks.children.forEach((grp) => { grp.position.z = -(uNow - grp.userData.u) * ZPS; });
+// ---- seismograph wall: 4 framed channels ----
+const WALL = { w: 64, h: 30, x: 0, y: 3.2, z: -16, n: 110 };
+const wall = new THREE.Group();
+wall.position.set(WALL.x, WALL.y, WALL.z);
+wall.rotation.x = -0.06;
+scene.add(wall);
+wall.add(frameRect(WALL.w, WALL.h));
+const wallBg = new THREE.Mesh(new THREE.PlaneGeometry(WALL.w, WALL.h), new THREE.MeshBasicMaterial({ color: new THREE.Color("#14171a"), transparent: true, opacity: 0.85 }));
+wallBg.position.z = -0.15;
+wall.add(wallBg);
+const laneH = WALL.h / 4;
+for (let i = 1; i < 4; i++) {
+  const y = -WALL.h / 2 + laneH * i;
+  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-WALL.w / 2, y, 0), new THREE.Vector3(WALL.w / 2, y, 0)]);
+  wall.add(new THREE.Line(g, faintMat()));
 }
-
-// ---------- navigation: scroll = time travel, drag = orbit ----------
-let viewBack = 0;          // active-seconds behind "now"
-let theta = 0.35, phi = 1.05, radius = 70, vT = 0, dragging = false, lastX = 0, lastY = 0;
-cv.addEventListener("pointerdown", (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
-addEventListener("pointerup", () => (dragging = false));
-addEventListener("pointermove", (e) => {
-  if (!dragging) return;
-  theta -= (e.clientX - lastX) * 0.006; phi -= (e.clientY - lastY) * 0.004;
-  phi = Math.max(0.2, Math.min(1.45, phi));
-  lastX = e.clientX; lastY = e.clientY;
+for (let gx = 1; gx < 8; gx++) {
+  const x = -WALL.w / 2 + (WALL.w / 8) * gx;
+  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, -WALL.h / 2, 0), new THREE.Vector3(x, WALL.h / 2, 0)]);
+  wall.add(new THREE.Line(g, faintMat()));
+}
+const laneCols = [COL.acc, COL.ink, COL.ink, COL.ink];
+const laneLines = PROBES.map((_, i) => {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(WALL.n * 3), 3));
+  g.setDrawRange(0, 0);
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(laneCols[i]), transparent: true, opacity: i === 0 ? 0.95 : 0.75 }));
+  l.frustumCulled = false;
+  wall.add(l);
+  return l;
 });
-cv.addEventListener("wheel", (e) => {
-  e.preventDefault();
-  const span = track.length ? track[track.length - 1].u - track[0].u : 0;
-  viewBack = Math.max(0, Math.min(span, viewBack + e.deltaY * 0.22));
-}, { passive: false });
-cv.addEventListener("dblclick", () => (viewBack = 0));
-addEventListener("keydown", (e) => { if (e.key === "End") viewBack = 0; });
+const lossDots = PROBES.map(() => {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(WALL.n * 3), 3));
+  g.setDrawRange(0, 0);
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ color: new THREE.Color(COL.alert), size: 0.9 }));
+  p.frustumCulled = false;
+  wall.add(p);
+  return p;
+});
+const laneLabels = PROBES.map((p, i) => {
+  const sp = makeLabel(`${p.name} ···ms`, laneCols[i], 0.62);
+  sp.position.set(-WALL.w / 2 + 1, WALL.h / 2 - laneH * i - 2.4, 0.3);
+  wall.add(sp);
+  return sp;
+});
+const wallTitle = makeLabel("RTT CHANNELS · LIVE", COL.dim, 0.62);
+wallTitle.position.set(-WALL.w / 2, WALL.h / 2 + 0.9, 0);
+wall.add(wallTitle);
+const timeLabels = [0, 1, 2, 3].map((k) => {
+  const sp = makeLabel("--:--:--", COL.dim, 0.5);
+  sp.position.set(-WALL.w / 2 + (WALL.w / 3) * k - (k === 3 ? 7 : 0), -WALL.h / 2 - 1.6, 0);
+  wall.add(sp);
+  return sp;
+});
+const statusSp = makeLabel("WARMING UP", COL.dim, 0.9);
+statusSp.position.set(-WALL.w / 2, WALL.h / 2 + 3.2, 0);
+wall.add(statusSp);
+
+// ---- shannon histogram instrument (left) ----
+const histo = new THREE.Group();
+histo.position.set(-44, -13.4, 6);
+histo.rotation.y = 0.62;
+scene.add(histo);
+const HW = 26, HH = 17;
+const hFrame = frameRect(HW, HH);
+hFrame.position.set(HW / 2 - 2, HH / 2, -1.2);
+histo.add(hFrame);
+const histTitle = makeLabel("RTT DISTRIBUTION · H BINS", COL.dim, 0.56);
+histTitle.position.set(-2, HH + 1.1, -1.2);
+histo.add(histTitle);
+const histLo = makeLabel("0.6×P50", COL.dim, 0.44);
+histLo.position.set(-2, -1.7, 0); histo.add(histLo);
+const histHi = makeLabel("1.8×P50", COL.dim, 0.44);
+histHi.position.set(HW - 8.4, -1.7, 0); histo.add(histHi);
+const bars = [];
+for (let b = 0; b < BINS; b++) {
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(1.45, 1, 1.45),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.acc), transparent: true, opacity: 0.92 })
+  );
+  m.position.set(b * (HW - 4) / BINS, 0.01, 0);
+  histo.add(m);
+  bars.push(m);
+}
+
+// ---- entropy column (right) ----
+const colG = new THREE.Group();
+colG.position.set(44, -13.4, 6);
+colG.rotation.y = -0.62;
+scene.add(colG);
+const CH = 22;
+const cFrame = frameRect(5, CH);
+cFrame.position.y = CH / 2;
+colG.add(cFrame);
+const colTitle = makeLabel("SHANNON H", COL.dim, 0.56);
+colTitle.position.set(-2.5, CH + 1.1, 0);
+colG.add(colTitle);
+[0.4, 0.62].forEach((th) => {
+  const y = th * CH;
+  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-3.4, y, 0), new THREE.Vector3(3.4, y, 0)]);
+  colG.add(new THREE.Line(g, hairMat()));
+  const sp = makeLabel("." + th * 100, COL.dim, 0.42);
+  sp.position.set(3.8, y - 0.7, 0);
+  colG.add(sp);
+});
+const colFill = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1, 1.6), new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.acc), transparent: true, opacity: 0.9 }));
+colG.add(colFill);
+const colVal = makeLabel(".00", COL.acc, 0.8);
+colVal.position.set(-1.9, -2.4, 0);
+colG.add(colVal);
+
+// ---- live updates of the station ----
+let dirty = true;
+function rebuildStation() {
+  const rounds = track.slice(-WALL.n);
+  if (rounds.length < 2) return;
+  for (let li = 0; li < 4; li++) {
+    const a = laneLines[li].geometry.attributes.position.array;
+    const la = lossDots[li].geometry.attributes.position.array;
+    let lossN = 0;
+    const yMid = WALL.h / 2 - laneH * li - laneH / 2;
+    const p = Math.max(stat[li].p50, 12);
+    for (let k = 0; k < rounds.length; k++) {
+      const x = -WALL.w / 2 + (k / (WALL.n - 1)) * WALL.w;
+      const v = rounds[k].vals[li];
+      const dev = v == null ? 0 : Math.max(-1, Math.min(1, (v - p) / p));
+      a[k * 3] = x;
+      a[k * 3 + 1] = yMid + dev * (laneH / 2 - 0.7);
+      a[k * 3 + 2] = 0.2;
+      if (v == null) {
+        la[lossN * 3] = x; la[lossN * 3 + 1] = yMid - laneH / 2 + 0.8; la[lossN * 3 + 2] = 0.25;
+        lossN++;
+      }
+    }
+    laneLines[li].geometry.setDrawRange(0, rounds.length);
+    laneLines[li].geometry.attributes.position.needsUpdate = true;
+    lossDots[li].geometry.setDrawRange(0, lossN);
+    lossDots[li].geometry.attributes.position.needsUpdate = true;
+    setLabel(laneLabels[li], `${PROBES[li].name} ${stat[li].win.length ? stat[li].p50.toFixed(0) + "ms ±" + stat[li].jit.toFixed(1) : "···"}`, laneCols[li]);
+  }
+  [0, 1, 2, 3].forEach((k) => {
+    const idx = Math.floor((rounds.length - 1) * (k / 3));
+    setLabel(timeLabels[k], hhmm(rounds[idx].t), COL.dim);
+  });
+  const z = zoneOf(entropy);
+  setLabel(statusSp, z === 2 ? "▲ DEGRADATION LIKELY" : z === 1 ? "◆ ENTROPY RISING" : "● ALL SIGNALS NOMINAL", zoneCol(z));
+}
 
 function resize() {
   renderer.setSize(innerWidth, innerHeight, false);
@@ -388,38 +440,51 @@ function resize() {
 }
 addEventListener("resize", resize); resize();
 
+let theta = 0.0, phi = 1.12, radius = 86, dragging = false, lastX = 0, lastY = 0;
+cv.addEventListener("pointerdown", (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
+addEventListener("pointerup", () => (dragging = false));
+addEventListener("pointermove", (e) => {
+  if (!dragging) return;
+  theta -= (e.clientX - lastX) * 0.0045;
+  phi -= (e.clientY - lastY) * 0.003;
+  theta = Math.max(-0.85, Math.min(0.85, theta));
+  phi = Math.max(0.78, Math.min(1.38, phi));
+  lastX = e.clientX; lastY = e.clientY;
+});
+cv.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  radius = Math.max(52, Math.min(140, radius + e.deltaY * 0.1));
+}, { passive: false });
+
 let t = 0;
 function frame() {
   t += 0.016;
-  if (rebuild) { rebuildGeometry(); rebuild = false; }
-  if (!dragging) { theta += vT; vT *= 0.94; }
+  if (dirty) { rebuildStation(); dirty = false; }
 
-  const anchorZ = -viewBack * ZPS;
-  const e = entropy;
-  core.material.color.set(zoneCol(zoneOf(e)));
-  core.scale.setScalar(1 + Math.sin(t * 2.2) * 0.05 + e * 0.3);
-  core.rotation.y = t * 0.3; core.rotation.x = t * 0.12;
-  core.position.set(0, 3, 0);
-  if (e > 0.5) core.position.add(new THREE.Vector3((Math.random() - 0.5) * e * 2, (Math.random() - 0.5) * e, 0));
-
-  const mode = document.getElementById("mode");
-  if (viewBack > 1 && track.length) {
-    const uNow = track[track.length - 1].u;
-    const target = track.find((p) => uNow - p.u <= viewBack) || track[0];
-    mode.textContent = `⏪ VIEWING ${hhmm(target.t)}`;
-    mode.style.color = COL.warn;
-  } else {
-    mode.textContent = "● LIVE";
-    mode.style.color = COL.acc;
+  const z = zoneOf(entropy);
+  const zc = new THREE.Color(zoneCol(z));
+  const n = recent.length || 1;
+  for (let b = 0; b < BINS; b++) {
+    const target = Math.max(0.06, (liveHist[b] / n) * 34);
+    const m = bars[b];
+    m.scale.y += (target - m.scale.y) * 0.12;
+    m.position.y = m.scale.y / 2;
+    m.material.color.lerp(zc, 0.08);
   }
+  const eh = Math.max(0.05, entropy * CH);
+  colFill.scale.y += (eh - colFill.scale.y) * 0.15;
+  colFill.position.y = colFill.scale.y / 2;
+  colFill.material.color.lerp(zc, 0.12);
+  setLabel(colVal, entropy.toFixed(2).slice(1), zoneCol(z));
 
-  const shake = e > 0.55 && viewBack < 1 ? (Math.random() - 0.5) * e * 1.1 : 0;
+  const sway = Math.sin(t * 0.25) * 0.025;
+  const shake = z === 2 ? (Math.random() - 0.5) * 0.6 : 0;
   cam.position.set(
-    Math.sin(theta) * Math.sin(phi) * radius + shake,
-    Math.cos(phi) * radius * 0.8 + 4,
-    anchorZ + Math.cos(theta) * Math.sin(phi) * radius + shake * 0.5
+    Math.sin(theta + sway) * Math.sin(phi) * radius + shake,
+    Math.cos(phi) * radius * 0.85,
+    Math.cos(theta + sway) * Math.sin(phi) * radius + shake * 0.5
   );
-  cam.lookAt(0, 0, anchorZ - 14);
+  cam.lookAt(0, 1.5, -4);
   renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }

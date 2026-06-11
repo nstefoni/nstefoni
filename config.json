@@ -93,6 +93,9 @@
     ["BACK", "Node.js · GraphQL"],
     ["TOOLS", "Git · Figma · Bun · Jest · R3F · Claude Code"]
   ],
+  "building": [
+    ["JITTERSCOPE", "shannon entropy over network jitter as an early-warning signal · rust · in the lab"]
+  ],
   "probes": [
     { "name": "GH", "url": "https://api.github.com/" },
     { "name": "NPM", "url": "https://registry.npmjs.org/" },

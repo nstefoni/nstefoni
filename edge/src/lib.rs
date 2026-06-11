@@ -398,6 +398,24 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
         sections.push_str(&txt(170.0, y, v, TxtOpt { size: 12, fill: &t.ink, ls: 1.2, anchor: "start", weight: 400 }));
         y += 26.0;
     }
+    if let Some(building) = cfg["building"].as_array() {
+        if !building.is_empty() {
+            y += 14.0;
+            sections.push_str(&format!(
+                r#"<line x1="{x0}" y1="{y}" x2="{x1}" y2="{y}" stroke="{}" stroke-width="1"/>"#,
+                t.hair
+            ));
+            y += 40.0;
+            sections.push_str(&header("03 / BUILDING", &mut y));
+            for row in building {
+                let k = row[0].as_str().unwrap_or("");
+                let v = row[1].as_str().unwrap_or("");
+                sections.push_str(&txt(x0, y, k, TxtOpt { size: 12, fill: &t.accent, ls: 2.0, anchor: "start", weight: 500 }));
+                sections.push_str(&txt(170.0, y, v, TxtOpt { size: 12, fill: &t.ink, ls: 1.2, anchor: "start", weight: 400 }));
+                y += 26.0;
+            }
+        }
+    }
     let h_total = y + 28.0;
     let (tick, mg) = (14.0, 18.0);
 
