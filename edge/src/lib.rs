@@ -352,11 +352,15 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
         })
         .collect();
 
-    let date = {
-        let s = String::from(js_sys::Date::new_0().to_iso_string());
-        // seconds included: lets anyone verify with their own eyes that two
-        // consecutive views are two distinct measurements
-        s[..19.min(s.len())].replace('T', " ")
+    let (date, bue) = {
+        let d = js_sys::Date::new_0();
+        let s = String::from(d.to_iso_string());
+        // seconds included: two consecutive views are verifiably two measurements
+        let utc = s[..19.min(s.len())].replace('T', " ");
+        // ART is fixed UTC-3 (no DST) — show local time for identity
+        let b = js_sys::Date::new(&worker::wasm_bindgen::JsValue::from_f64(d.get_time() - 3.0 * 3600.0 * 1000.0));
+        let bs = String::from(b.to_iso_string());
+        (utc, bs[11..16.min(bs.len())].to_string())
     };
     let e_w = 90.0;
     // site calibration: edge probes pay DNS/TLS per request, noise floor ≈ .75
@@ -512,7 +516,7 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
         c0 = sy0 - 6.0,
         c1 = sy1 + 4.0,
         stats_t = txt(x1, 204.0, &stats, TxtOpt { size: 9, fill: &t.faint, ls: 1.5, anchor: "end", weight: 400 }),
-        foot = txt(x0, 348.0, &format!("RUST PROBE · CLOUDFLARE EDGE → GH·NPM·CF·VRC · {} UTC", date), TxtOpt { size: 10, fill: &t.dim, ls: 2.5, anchor: "start", weight: 400 }),
+        foot = txt(x0, 348.0, &format!("RUST PROBE · CF EDGE → 4 TARGETS · {} UTC · {} BUE", date, bue), TxtOpt { size: 10, fill: &t.dim, ls: 2.5, anchor: "start", weight: 400 }),
         ent_label = txt(x1 - e_w - 78.0, 348.0, "ENTROPY", TxtOpt { size: 10, fill: &t.dim, ls: 2.5, anchor: "start", weight: 400 }),
         ebx = x1 - e_w - 4.0,
         ew0 = (e_w * m.entropy).max(3.0),
