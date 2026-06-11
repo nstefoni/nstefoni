@@ -125,7 +125,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;pa
     <div class="chart"><canvas id="cv-hist"></canvas></div>
   </section>
   <section class="panel" id="p-trace">
-    <div class="ptitle"><span>ENTROPY TRACE · FULL HISTORY · PERSISTS ACROSS VISITS</span><span style="display:flex;gap:8px;align-items:center"><span id="tspan"></span><span class="help" data-tip="El registro histórico de H — verde estable, ámbar subiendo, rojo peligro. Se guarda en tu navegador: cerrá y volvé mañana, tu historia sigue acá. Los cortes son gaps entre sesiones.">?</span></span></div>
+    <div class="ptitle"><span>ENTROPY TRACE · FULL HISTORY · PERSISTS ACROSS VISITS</span><span style="display:flex;gap:8px;align-items:center"><button class="cbtn" id="expB" style="padding:3px 8px;pointer-events:auto">EXPORT JSON</button><span id="tspan"></span><span class="help" data-tip="El registro histórico de H — verde estable, ámbar subiendo, rojo peligro. Se guarda en tu navegador: cerrá y volvé mañana, tu historia sigue acá. Los cortes son gaps entre sesiones.">?</span></span></div>
     <div class="chart"><canvas id="tl"></canvas></div>
   </section>
 </div>
@@ -292,6 +292,25 @@ rateB.querySelectorAll("span").forEach((s) =>
 simB.addEventListener("click", () => { ctl.sim = !ctl.sim; paintCtrls(); ui(); });
 paintCtrls();
 setInterval(() => (document.getElementById("clock").textContent = new Date().toISOString().slice(11, 19) + " UTC"), 1000);
+document.getElementById("expB").addEventListener("click", () => {
+  const payload = {
+    station: "jitterscope-web-01",
+    exported_at: new Date().toISOString(),
+    schema: {
+      samples: "t: epoch ms · u: active seconds (gaps compressed) · vals: rtt ms per channel [GH,NPM,CDN,VRC] (null=lost, -1=channel off) · e: shannon entropy 0-1 · gap: session break",
+      events: "t: epoch ms · z: zone (0 nominal, 1 advisory, 2 alert) · e: entropy at crossing",
+    },
+    channels: PROBES.map((p) => p.name),
+    samples: track,
+    events,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `jitterscope-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
 
 function ui() {
   const z = zoneOf(entropy);
