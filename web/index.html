@@ -633,8 +633,22 @@ const LANES_Z = [-7.5, -2.5, 2.5, 7.5];
       hwScene.add(dash);
     }
   }
+  const hwLabel = (text, color) => {
+    const c = document.createElement("canvas");
+    c.width = 128; c.height = 36;
+    const g = c.getContext("2d");
+    g.font = "500 22px Menlo, monospace";
+    g.fillStyle = color;
+    g.textBaseline = "middle";
+    g.fillText(text, 4, 18);
+    const tex = new THREE.CanvasTexture(c);
+    tex.minFilter = THREE.LinearFilter;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+    sp.scale.set(6.4, 1.8, 1);
+    return sp;
+  };
   PROBES.forEach((p, i) => {
-    const sp = makeLabel(p.name, CH[i], 0.55);
+    const sp = hwLabel(p.name, CH[i]);
     sp.position.set(-36, 1.6, LANES_Z[i]);
     hwScene.add(sp);
   });
