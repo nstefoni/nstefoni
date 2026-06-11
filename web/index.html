@@ -712,28 +712,26 @@ const LANES_Z = [-7.5, -2.5, 2.5, 7.5];
     hwScene.add(sp);
   });
 }
-// scientific tracers, not toy cars: hexagonal dart + additive light wake + halo
-const dartGeo = new THREE.ConeGeometry(0.55, 1, 6);
-dartGeo.rotateZ(-Math.PI / 2);
-const trailTex = (() => {
+// long-exposure light streaks — the flow-map look: bright rounded head,
+// tail fading to nothing. pure light, no geometry. length encodes RTT.
+const streakTex = (() => {
   const c = document.createElement("canvas");
-  c.width = 64; c.height = 16;
+  c.width = 256; c.height = 32;
   const g = c.getContext("2d");
-  const gr = g.createLinearGradient(0, 0, 64, 0);
-  gr.addColorStop(0, "rgba(255,255,255,0)");
-  gr.addColorStop(1, "rgba(255,255,255,0.85)");
-  g.fillStyle = gr; g.fillRect(0, 0, 64, 16);
-  return new THREE.CanvasTexture(c);
-})();
-const glowTex = (() => {
-  const c = document.createElement("canvas");
-  c.width = c.height = 64;
-  const g = c.getContext("2d");
-  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  gr.addColorStop(0, "rgba(255,255,255,0.9)");
-  gr.addColorStop(1, "rgba(255,255,255,0)");
-  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-  return new THREE.CanvasTexture(c);
+  const tail = g.createLinearGradient(0, 0, 216, 0);
+  tail.addColorStop(0, "rgba(255,255,255,0)");
+  tail.addColorStop(1, "rgba(255,255,255,0.75)");
+  g.fillStyle = tail;
+  g.fillRect(0, 10, 216, 12);
+  const head = g.createRadialGradient(224, 16, 0, 224, 16, 16);
+  head.addColorStop(0, "rgba(255,255,255,1)");
+  head.addColorStop(0.45, "rgba(255,255,255,0.9)");
+  head.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = head;
+  g.fillRect(208, 0, 48, 32);
+  const t = new THREE.CanvasTexture(c);
+  t.minFilter = THREE.LinearFilter;
+  return t;
 })();
 const cars = [];
 const HW_SPEED = 14, HW_X0 = -42, HW_X1 = 34;
@@ -743,22 +741,17 @@ hwSpawn = (lane, v) => {
   const p = Math.max(stat[lane].p50, 12);
   const len = lost ? 1 : 1 + Math.min(3, Math.max(0, v / p - 1)) * 1.6;
   const col = new THREE.Color(lost ? COL.alert : CH[lane]);
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(dartGeo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: lost ? 0.75 : 0.95 }));
-  body.scale.set(len, 0.5, 0.85);
-  g.add(body);
-  const trailGeo = new THREE.PlaneGeometry(len * 3.2, 0.7);
-  const trail = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ map: trailTex, color: col, transparent: true, opacity: lost ? 0.18 : 0.32, blending: THREE.AdditiveBlending, depthWrite: false }));
-  trail.rotation.x = -Math.PI / 2;
-  trail.position.set(-len * 1.9, -0.12, 0);
-  g.add(trail);
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: col, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false }));
-  glow.scale.set(3.4, 1.7, 1);
-  g.add(glow);
-  g.position.set(HW_X0, 0.12, LANES_Z[lane]);
-  g.userData = { lost, lane, len, mats: [body.material, trail.material, glow.material], trailGeo };
-  hwScene.add(g);
-  cars.push(g);
+  const geo = new THREE.PlaneGeometry(2.2 + len * 2.2, 1.0);
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+    map: streakTex, color: col, transparent: true,
+    opacity: lost ? 0.55 : 0.9,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  m.rotation.x = -Math.PI / 2;
+  m.position.set(HW_X0, 0.08, LANES_Z[lane]);
+  m.userData = { lost, lane, len, mats: [m.material], trailGeo: geo };
+  hwScene.add(m);
+  cars.push(m);
 };
 // density: a high-frequency auxiliary prober feeds the highway with real
 // packets (~4 cars/s) — the metric pipeline stays untouched
