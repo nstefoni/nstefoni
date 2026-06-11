@@ -201,7 +201,7 @@ function shannonHist(values, k = BINS) {
   if (values.length < 8) return { h: 0, hist };
   const s = [...values].sort((a, b) => a - b);
   const p50 = s[Math.floor(s.length / 2)];
-  const lo = p50 * 0.6, hi = p50 * 1.8;
+  const lo = Math.max(0, p50 - Math.max(p50 * 0.4, 0.08)), hi = p50 + Math.max(p50 * 0.8, 0.16);
   if (hi - lo < 1e-9) return { h: 0, hist };
   for (const v of values) {
     const c = Math.min(hi, Math.max(lo, v));

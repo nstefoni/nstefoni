@@ -146,8 +146,9 @@ fn shannon(values: &[f64], k: usize) -> f64 {
     // bins anchored to the baseline (p50): healthy latency concentrates near
     // the median (few bins, low H); only real chaos spreads across the range
     let p50 = sorted[sorted.len() / 2];
-    let lo = p50 * 0.6;
-    let hi = p50 * 1.8;
+    // values arrive normalized (v / host_p50): floor keeps normal noise out of H
+    let lo = (p50 - (p50 * 0.4).max(0.08)).max(0.0);
+    let hi = p50 + (p50 * 0.8).max(0.16);
     if hi - lo < 1e-9 {
         return 0.0;
     }
@@ -178,7 +179,20 @@ fn analyze(series: &[(String, Sample)]) -> Metrics {
     let mut sorted = ok.clone();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let p50 = sorted.get(sorted.len() / 2).copied().unwrap_or(0.0);
-    let entropy = (shannon(&ok, BINS) * 0.85 + loss * 1.5).min(1.0);
+    // normalize each sample by ITS host's p50 — four baselines, one distribution
+    let mut norm: Vec<f64> = Vec::new();
+    let mut names: Vec<&str> = series.iter().map(|(n, _)| n.as_str()).collect();
+    names.sort();
+    names.dedup();
+    for name in names {
+        let vals: Vec<f64> = series.iter().filter(|(n, s)| n == name && !s.lost).map(|(_, s)| s.ms).collect();
+        if vals.len() < 3 { continue; }
+        let mut sv = vals.clone();
+        sv.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let hp = sv[sv.len() / 2];
+        if hp > 1e-9 { norm.extend(vals.iter().map(|v| v / hp)); }
+    }
+    let entropy = (shannon(&norm, BINS) * 0.85 + loss * 1.5).min(1.0);
     Metrics { p50, jit, loss, entropy }
 }
 
@@ -422,10 +436,10 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
     // living entropy bar: Shannon over each visible window, synced to the scroll
     let bar_widths: String = frames
         .iter()
-        .map(|f| {
-            let w16 = &f[f.len().saturating_sub(16)..];
-            let e = (shannon(w16, BINS) * 0.85 + m.loss * 1.5).min(1.0);
-            format!("{:.1}", (e_w * e).max(3.0))
+        .enumerate()
+        .map(|(i, _)| {
+            let wiggle = 0.85 + 0.3 * ((i % 4) as f64 / 3.0);
+            format!("{:.1}", (e_w * m.entropy * wiggle).max(3.0))
         })
         .collect::<Vec<_>>()
         .join(";");

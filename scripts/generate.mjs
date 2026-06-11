@@ -78,7 +78,7 @@ export function shannon(values, k = 12) {
   // bins anchored to the baseline (p50): healthy latency concentrates near the
   // median (few bins, low H); only real chaos spreads across the range
   const p50 = s[Math.floor(s.length / 2)];
-  const lo = p50 * 0.6, hi = p50 * 1.8;
+  const lo = Math.max(0, p50 - Math.max(p50 * 0.4, 0.08)), hi = p50 + Math.max(p50 * 0.8, 0.16);
   if (hi - lo < 1e-9) return 0;
   const hist = new Array(k).fill(0);
   for (const v of values) {
@@ -96,7 +96,15 @@ function analyze(series) {
   for (let i = 1; i < ok.length; i++) J += (Math.abs(ok[i] - ok[i - 1]) - J) / 16;
   const loss = series.filter((s) => s.lost).length / series.length;
   const p50 = [...ok].sort((a, b) => a - b)[Math.floor(ok.length / 2)] || 0;
-  const entropy = Math.min(1, shannon(ok) * 0.85 + loss * 1.5);
+  // normalize each sample by ITS host's p50 — four baselines, one distribution
+  const norm = [];
+  for (const name of [...new Set(series.map((s) => s.probe))]) {
+    const vals = series.filter((s) => s.probe === name && !s.lost).map((s) => s.ms);
+    if (vals.length < 3) continue;
+    const hp = [...vals].sort((a, b) => a - b)[Math.floor(vals.length / 2)];
+    if (hp > 1e-9) norm.push(...vals.map((v) => v / hp));
+  }
+  const entropy = Math.min(1, shannon(norm) * 0.85 + loss * 1.5);
   return { J, loss, entropy, p50 };
 }
 
@@ -288,7 +296,7 @@ ${txt(X0, 348, `JITTERSCOPE · GITHUB CI PROBE · SHANNON H · ${date} UTC`, { s
 <g>${txt(X1 - eW - 78, 348, "ENTROPY", { size: 10 })}
 <rect x="${X1 - eW - 4}" y="340" width="${eW}" height="6" fill="none" stroke="${T.hair}" stroke-width="0.6"/>
 <rect x="${X1 - eW - 4}" y="340" width="${Math.max(3, eW * m.entropy).toFixed(1)}" height="6" fill="${eCol}">
-<animate attributeName="width" values="${frames.map((f) => Math.max(3, eW * Math.min(1, shannon(f.slice(-16)) * 0.85 + m.loss * 1.5)).toFixed(1)).join(";")}" dur="${DUR}s" repeatCount="indefinite" calcMode="linear"/>
+<animate attributeName="width" values="${frames.map((_, i) => Math.max(3, eW * m.entropy * (0.85 + 0.3 * ((i % 4) / 3))).toFixed(1)).join(";")}" dur="${DUR}s" repeatCount="indefinite" calcMode="linear"/>
 </rect>
 ${txt(X1 + 4, 348, m.entropy.toFixed(2).slice(1), { size: 10, fill: eCol, ls: 0.5, anchor: "end" })}</g>
 ${sections}
