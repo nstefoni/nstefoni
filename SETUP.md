@@ -34,7 +34,7 @@ umbrales: `< .40` lima (nominal) · `.40-.62` ambar (subiendo) · `> .62` rojo (
 
 **capa 2 — el ci (`scripts/generate.mjs`):** mismo pipeline en node, corre cada 6hs, commitea `assets/card.svg` + `assets/telemetry.json`. respaldo del worker y serie historica gratis en los commits.
 
-**capa 3 — el sitio (`web/`):** `https://nstefoni.github.io/nstefoni/` mide la conexion DEL VISITANTE desde su navegador. arena 3d: 4 anillos osciloscopio (uno x host), nucleo de entropia q late en el centro, sweep de radar escribiendo muestras, estratos q se hunden con la historia (color = salud de ese momento). orbita 360 con drag, zoom con scroll.
+**capa 3 — el sitio (`web/`):** `https://nstefoni.github.io/nstefoni/` mide la conexion DEL VISITANTE desde su navegador. es un dashboard de deteccion temprana estilo USGS: banner de alerta, helicorder con los 4 canales (canvas 2d, scroll continuo anclado al reloj), gauge de shannon, event feed, traza historica persistente (localStorage), y un panel 3d con tres vistas de la misma señal — waterfall (la distribucion como terreno en el tiempo), chamber (la entropia como particulas: rio laminar ↔ gas caotico) y highway (cada auto = un paquete real, el espaciado = jitter, con car-following → embotellamientos reales). controles: toggle x canal, rate segmentado q gobierna sondas Y trafico, switch de inject fault (persistente), camara libre en el 3d (drag/zoom/dblclick). helpers "?" en cada panel.
 
 ojo: en cloudflare workers y en navegador NO hay udp — se mide rtt de http. el mvp real (udp + tui) es otro binario y otro repo; este perfil es la maqueta conceptual.
 

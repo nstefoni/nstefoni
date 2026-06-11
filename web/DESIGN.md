@@ -2,7 +2,7 @@
 
 la regla madre: **el color es informacion, nunca decoracion**. tres familias de color con roles q no se pisan:
 
-1. **identidad de canal** (convencion osciloscopio): GH lima `#c8f04c` · NPM cian `#54d8e0` · CDN violeta `#b48cff` · VRC azul `#6aa6ff`. un canal se reconoce x su color en cualquier panel (traza, legend, boton).
+1. **identidad de canal** (convencion helicorder sismico): trazas MONOCROMAS en 4 tonos de tinta, del mas brillante (GH `#e9ede2`) al mas tenue (VRC al 38%). la identidad la da el carril + la etiqueta, no el color — como los sismografos reales. esto le devuelve al rojo todo su poder de alarma.
 2. **semantica de estado**: lima = nominal · ambar `#ffc233` = advisory · rojo `#ff5449` = alert. SOLO para estados, nunca para identidad.
 3. **neutros de chasis**: fondo `--bg #191c1e` · panel `--panel #101316` · chrome `rgba(20,23,26,.92)` · tinta `#e9ede2` · dim `#8b948f` · hairline `rgba(...,0.25)`.
 
