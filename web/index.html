@@ -573,22 +573,29 @@ chScene.add(new THREE.Points(chGeo, chMat));
   chScene.add(e);
 }
 const chTmp = new THREE.Color();
+let chT = 0;
 function chamberUpdate() {
-  const kick = 0.02 + entropy * entropy * 0.55;
-  const drift = Math.max(0, 0.05 - entropy * 0.06);
+  chT += 0.016;
+  // structural regime change: order = coherent laminar river; chaos = isotropic gas
+  const order = Math.max(0, 1 - entropy * 1.8);
+  const noise = (0.04 + entropy * entropy * 1.1) * (1 - order * 0.85);
   for (let i = 0; i < CHN * 3; i += 3) {
-    chVel[i] += (Math.random() - 0.5) * kick + drift * 0.1;
-    chVel[i + 1] += (Math.random() - 0.5) * kick;
-    chVel[i + 2] += (Math.random() - 0.5) * kick;
-    chVel[i] *= 0.96; chVel[i + 1] *= 0.96; chVel[i + 2] *= 0.96;
+    // desired velocity: laminar flow (+x, gentle weave) blended with brownian kicks
+    const dx = 0.2 * order + (Math.random() - 0.5) * noise;
+    const dy = Math.sin(chT * 0.9 + chPos[i + 2] * 0.45) * 0.035 * order + (Math.random() - 0.5) * noise;
+    const dz = Math.cos(chT * 0.7 + chPos[i + 1] * 0.5) * 0.02 * order + (Math.random() - 0.5) * noise;
+    chVel[i] += (dx - chVel[i]) * 0.08;
+    chVel[i + 1] += (dy - chVel[i + 1]) * 0.08;
+    chVel[i + 2] += (dz - chVel[i + 2]) * 0.08;
     chPos[i] += chVel[i]; chPos[i + 1] += chVel[i + 1]; chPos[i + 2] += chVel[i + 2];
     if (chPos[i] > BX) chPos[i] = -BX; else if (chPos[i] < -BX) chPos[i] = BX;
-    if (Math.abs(chPos[i + 1]) > BY) chVel[i + 1] *= -1;
-    if (Math.abs(chPos[i + 2]) > BZ) chVel[i + 2] *= -1;
+    if (Math.abs(chPos[i + 1]) > BY) { chVel[i + 1] *= -1; chPos[i + 1] = Math.sign(chPos[i + 1]) * BY; }
+    if (Math.abs(chPos[i + 2]) > BZ) { chVel[i + 2] *= -1; chPos[i + 2] = Math.sign(chPos[i + 2]) * BZ; }
   }
   chGeo.attributes.position.needsUpdate = true;
   chTmp.set(zoneCol(zoneOf(entropy)));
   chMat.color.lerp(chTmp, 0.04);
+  chMat.size = 0.5 + entropy * 0.45;
 }
 const vizB = document.getElementById("vizB");
 vizB.addEventListener("click", () => {
