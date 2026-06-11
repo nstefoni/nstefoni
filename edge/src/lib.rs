@@ -504,15 +504,36 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
     )
 }
 
-// ---------- entry ----------
+// ---------- entry: stale-while-revalidate ----------
+// serve the last rendered card INSTANTLY from the edge cache, refresh with a
+// fresh probe in the background — every view is fast, telemetry stays live
+use std::sync::Mutex;
+static LAST: Mutex<Option<String>> = Mutex::new(None);
+
+fn client_response(svg: String) -> Result<Response> {
+    let mut headers = Headers::new();
+    headers.set("content-type", "image/svg+xml; charset=utf-8")?;
+    headers.set("cache-control", "no-store, max-age=0")?;
+    Ok(Response::ok(svg)?.with_headers(headers))
+}
+
+async fn render_and_store(env: Env) {
+    if let Ok(svg) = run(&env).await {
+        *LAST.lock().unwrap() = Some(svg);
+    }
+}
+
 #[event(fetch)]
-async fn fetch(_req: Request, env: Env, _ctx: Context) -> Result<Response> {
+async fn fetch(_req: Request, env: Env, ctx: Context) -> Result<Response> {
+    let stale = LAST.lock().unwrap().clone();
+    if let Some(svg) = stale {
+        ctx.wait_until(render_and_store(env));
+        return client_response(svg);
+    }
     match run(&env).await {
         Ok(svg) => {
-            let mut headers = Headers::new();
-            headers.set("content-type", "image/svg+xml; charset=utf-8")?;
-            headers.set("cache-control", "no-store, max-age=0")?;
-            Ok(Response::ok(svg)?.with_headers(headers))
+            *LAST.lock().unwrap() = Some(svg.clone());
+            client_response(svg)
         }
         Err(_) => Response::redirect(Url::parse(&format!("{}/assets/card.svg", RAW))?),
     }
