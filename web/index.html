@@ -104,7 +104,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;pa
     </section>
   </div>
   <section class="panel" id="p-fall">
-    <div class="ptitle"><span>DISTRIBUTION WATERFALL · 3D · LAST 64 WINDOWS</span><span style="display:flex;gap:8px;align-items:center"><span>OLD → NOW</span><span class="help" data-tip="La forma de tu latencia a través del tiempo. Una montaña angosta y verde = red ordenada y predecible. Si la masa se desparrama hacia los bordes rojos, la distribución se está volviendo caótica — eso ES la entropía subiendo. Probá INJECT FAULT y mirala deformarse.">?</span></span></div>
+    <div class="ptitle"><span id="fallT">DISTRIBUTION WATERFALL · 3D · LAST 64 WINDOWS</span><span style="display:flex;gap:8px;align-items:center"><button class="cbtn" id="vizB" style="padding:3px 8px">VIEW · SURFACE</button><span>OLD → NOW</span><span class="help" data-tip="La forma de tu latencia a través del tiempo. Una montaña angosta y verde = red ordenada y predecible. Si la masa se desparrama hacia los bordes rojos, la distribución se está volviendo caótica — eso ES la entropía subiendo. Probá INJECT FAULT y mirala deformarse.">?</span></span></div>
     <div class="chart"><canvas id="cv-fall"></canvas></div>
   </section>
   <section class="panel" id="p-hist">
@@ -546,6 +546,59 @@ fallScene.fog = new THREE.Fog(new THREE.Color("#101316"), 45, 110);
     fallCam.lookAt(0, 2, -2);
   };
 }
+// ENTROPY CHAMBER — the metric as physics: particles whose brownian agitation
+// IS the measured H. healthy = laminar drift in ink; chaos = hot gas in red.
+let viz = 0;
+const chScene = new THREE.Scene();
+const chCam = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+chCam.position.set(0, 6, 34);
+chCam.lookAt(0, 0, 0);
+const CHN = 300, BX = 16, BY = 8, BZ = 10;
+const chGeo = new THREE.BufferGeometry();
+const chPos = new Float32Array(CHN * 3);
+const chVel = new Float32Array(CHN * 3);
+for (let i = 0; i < CHN * 3; i += 3) {
+  chPos[i] = (Math.random() - 0.5) * BX * 2;
+  chPos[i + 1] = (Math.random() - 0.5) * BY * 2;
+  chPos[i + 2] = (Math.random() - 0.5) * BZ * 2;
+}
+chGeo.setAttribute("position", new THREE.BufferAttribute(chPos, 3));
+const chMat = new THREE.PointsMaterial({ color: new THREE.Color(COL.ink), size: 0.55, transparent: true, opacity: 0.85 });
+chScene.add(new THREE.Points(chGeo, chMat));
+{
+  const e = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(BX * 2, BY * 2, BZ * 2)),
+    new THREE.LineBasicMaterial({ color: new THREE.Color(COL.dim), transparent: true, opacity: 0.3 })
+  );
+  chScene.add(e);
+}
+const chTmp = new THREE.Color();
+function chamberUpdate() {
+  const kick = 0.02 + entropy * entropy * 0.55;
+  const drift = Math.max(0, 0.05 - entropy * 0.06);
+  for (let i = 0; i < CHN * 3; i += 3) {
+    chVel[i] += (Math.random() - 0.5) * kick + drift * 0.1;
+    chVel[i + 1] += (Math.random() - 0.5) * kick;
+    chVel[i + 2] += (Math.random() - 0.5) * kick;
+    chVel[i] *= 0.96; chVel[i + 1] *= 0.96; chVel[i + 2] *= 0.96;
+    chPos[i] += chVel[i]; chPos[i + 1] += chVel[i + 1]; chPos[i + 2] += chVel[i + 2];
+    if (chPos[i] > BX) chPos[i] = -BX; else if (chPos[i] < -BX) chPos[i] = BX;
+    if (Math.abs(chPos[i + 1]) > BY) chVel[i + 1] *= -1;
+    if (Math.abs(chPos[i + 2]) > BZ) chVel[i + 2] *= -1;
+  }
+  chGeo.attributes.position.needsUpdate = true;
+  chTmp.set(zoneCol(zoneOf(entropy)));
+  chMat.color.lerp(chTmp, 0.04);
+}
+const vizB = document.getElementById("vizB");
+vizB.addEventListener("click", () => {
+  viz = (viz + 1) % 2;
+  vizB.textContent = "VIEW · " + (viz ? "CHAMBER" : "SURFACE");
+  document.getElementById("fallT").textContent = viz
+    ? "ENTROPY CHAMBER · 300 PARTICLES · AGITATION = H"
+    : "DISTRIBUTION WATERFALL · 3D · LAST 64 WINDOWS";
+});
+
 function renderFall() {
   const r = fallCanvas.getBoundingClientRect();
   if (r.width < 10 || r.height < 10) return;
@@ -557,9 +610,16 @@ function renderFall() {
     renderer.domElement.__h = Math.round(r.height);
     fallCam.aspect = r.width / r.height;
     fallCam.updateProjectionMatrix();
+    chCam.aspect = r.width / r.height;
+    chCam.updateProjectionMatrix();
   }
-  window.__fallUpdate();
-  renderer.render(fallScene, fallCam);
+  if (viz === 1) {
+    chamberUpdate();
+    renderer.render(chScene, chCam);
+  } else {
+    window.__fallUpdate();
+    renderer.render(fallScene, fallCam);
+  }
 }
 
 // ---------- boot cascade + render loop ----------
