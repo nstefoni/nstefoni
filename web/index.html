@@ -296,7 +296,11 @@ rateB.querySelectorAll("span").forEach((s) =>
 );
 simB.addEventListener("click", () => { ctl.sim = !ctl.sim; paintCtrls(); ui(); });
 paintCtrls();
-setInterval(() => (document.getElementById("clock").textContent = new Date().toISOString().slice(11, 19) + " UTC"), 1000);
+setInterval(() => {
+  const d = new Date();
+  document.getElementById("clock").textContent =
+    d.toTimeString().slice(0, 8) + " LOCAL · " + d.toISOString().slice(11, 19) + " UTC";
+}, 1000);
 document.getElementById("expB").addEventListener("click", () => {
   const payload = {
     station: "jitterscope-web-01",
