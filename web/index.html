@@ -4,69 +4,106 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>NICOLAS STEFONI · JITTERSCOPE</title>
-<meta name="description" content="Network early-warning station — your connection, measured and recorded live."/>
+<meta name="description" content="Network early-warning dashboard — your connection, measured and recorded live."/>
 <link rel="stylesheet" href="theme.css"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;background:var(--bg);overflow:hidden}
-body{font-family:ui-monospace,'SF Mono','Cascadia Mono','JetBrains Mono','Roboto Mono',Menlo,Consolas,monospace;color:var(--ink)}
-canvas#c{position:fixed;inset:0;display:block;cursor:grab}
-canvas#c:active{cursor:grabbing}
-#vig{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 42%, transparent 55%, rgba(0,0,0,0.55) 100%)}
-.ui{position:fixed;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:28px 36px;pointer-events:none;z-index:2}
-.ui.top{top:0}.ui.bot{bottom:0;align-items:flex-end}
-.lockup .name{font-size:clamp(18px,3.2vw,30px);font-weight:500;letter-spacing:.45em;white-space:nowrap}
-.lockup .sub{font-size:10px;letter-spacing:.3em;color:var(--dim);margin-top:8px;min-height:14px}
-.ent{text-align:right}
-.ent .lab{font-size:10px;letter-spacing:.3em;color:var(--dim)}
-.ent .bar{width:140px;height:6px;border:1px solid var(--hair);margin:8px 0 6px auto}
-.ent .fill{height:100%;width:4%;background:var(--acc);transition:width .4s steps(6)}
-.ent .val{font-size:12px;color:var(--acc)}
-.stats{font-size:10px;letter-spacing:.18em;color:var(--dim);line-height:2.1;max-width:62vw}
-.stats b{color:var(--ink);font-weight:500}
-#events{color:var(--dim);font-size:9px;letter-spacing:.15em;line-height:1.9}
-#tag{color:var(--acc);margin-bottom:2px}
-.right{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
-.gh{pointer-events:auto;font-size:10px;letter-spacing:.3em;color:var(--dim);text-decoration:none;border:1px solid var(--hair);padding:10px 16px;white-space:nowrap}
-.gh:hover{color:var(--ink);border-color:var(--ink)}
-.hint{font-size:9px;letter-spacing:.25em;color:var(--dim);white-space:nowrap}
-.cur{display:inline-block;width:6px;height:11px;background:var(--acc);vertical-align:-1px;animation:bl 1.15s steps(2,jump-none) infinite}
-@keyframes bl{50%{opacity:0}}
-.tlwrap{position:fixed;left:36px;right:36px;bottom:118px;z-index:2;pointer-events:none}
-.corner{position:fixed;width:22px;height:22px;border:1px solid var(--hair);z-index:2}
-.c1{top:14px;left:14px;border-right:0;border-bottom:0}.c2{top:14px;right:14px;border-left:0;border-bottom:0}
-.c3{bottom:14px;right:14px;border-left:0;border-top:0}.c4{bottom:14px;left:14px;border-right:0;border-top:0}
+html,body{height:100%;background:var(--bg)}
+body{font-family:ui-monospace,'SF Mono','Cascadia Mono','JetBrains Mono','Roboto Mono',Menlo,Consolas,monospace;color:var(--ink);overflow:hidden}
+#gl{position:fixed;inset:0;z-index:0}
+#app{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column;padding:14px;gap:10px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:4px 4px 0}
+.brand{display:flex;align-items:baseline;gap:14px;white-space:nowrap}
+.brand .nm{font-size:15px;font-weight:500;letter-spacing:.35em}
+.brand .st{font-size:9px;letter-spacing:.25em;color:var(--dim)}
+#bsub{font-size:9px;letter-spacing:.22em;color:var(--dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hright{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.cbtn{background:transparent;border:1px solid var(--hair);color:var(--dim);font-family:inherit;font-size:9px;letter-spacing:.18em;padding:7px 9px;cursor:pointer;transition:all .15s}
+.cbtn:hover{border-color:var(--ink);color:var(--ink)}
+#clock{font-size:11px;letter-spacing:.18em;color:var(--ink);border:1px solid var(--hair);padding:7px 10px}
+#banner{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--hair);padding:10px 16px;background:rgba(20,23,26,.9)}
+#bstate{font-size:13px;font-weight:500;letter-spacing:.3em}
+#bmeta{font-size:9px;letter-spacing:.2em;color:var(--dim)}
+#grid{flex:1;display:grid;grid-template-columns:repeat(12,1fr);grid-template-rows:minmax(0,7fr) minmax(0,5fr) 84px;gap:10px;min-height:0}
+.panel{border:1px solid var(--hair);background:rgba(20,23,26,.88);display:flex;flex-direction:column;min-height:0;opacity:0;transform:translateY(12px)}
+.panel.on{opacity:1;transform:none;transition:opacity .55s ease,transform .55s ease}
+.ptitle{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--hair);font-size:9px;letter-spacing:.25em;color:var(--dim);white-space:nowrap;gap:8px}
+.ptitle b{color:var(--ink);font-weight:500}
+.chart{flex:1;min-height:0;position:relative}
+#p-wave{grid-column:1/9;grid-row:1}
+#p-side{grid-column:9/13;grid-row:1;display:flex;flex-direction:column;gap:10px;border:0;background:transparent;opacity:1;transform:none}
+#p-gauge{flex:4}
+#p-events{flex:5}
+#p-fall{grid-column:1/8;grid-row:2}
+#p-hist{grid-column:8/13;grid-row:2}
+#p-trace{grid-column:1/13;grid-row:3}
+#evlist{flex:1;overflow:hidden;padding:8px 12px;font-size:10px;letter-spacing:.12em;line-height:2.05;color:var(--dim)}
+#evlist .t{color:var(--ink)}
+.legend{display:flex;gap:10px;font-size:9px;letter-spacing:.15em}
+#tl{width:100%;height:100%;display:block}
+.tracewrap{flex:1;min-height:0;padding:6px 10px}
+@media (max-width:900px){
+  body{overflow:auto}
+  #app{height:auto}
+  #grid{display:flex;flex-direction:column}
+  .panel{min-height:230px}
+  #p-side{min-height:0}
+  #bsub{display:none}
+}
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
-<div id="vig"></div>
-<div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
-<div class="ui top">
-  <div class="lockup">
-    <div class="name">NICOLAS STEFONI</div>
-    <div class="sub"><span id="boot">INITIALIZING JITTERSCOPE STATION 01</span> <span class="cur"></span></div>
+<canvas id="gl"></canvas>
+<div id="app">
+<header>
+  <div class="brand">
+    <span class="nm">NICOLAS STEFONI</span>
+    <span class="st">JITTERSCOPE · STATION 01 · BUE 34.6°S 58.4°W</span>
   </div>
-  <div class="ent">
-    <div class="lab">SHANNON ENTROPY</div>
-    <div class="bar"><div class="fill" id="efill"></div></div>
-    <div class="val" id="eval">.00</div>
+  <span id="bsub">INITIALIZING…</span>
+  <div class="hright">
+    <button class="cbtn" id="ch0">GH</button>
+    <button class="cbtn" id="ch1">NPM</button>
+    <button class="cbtn" id="ch2">CDN</button>
+    <button class="cbtn" id="ch3">VRC</button>
+    <button class="cbtn" id="rateB">RATE · NORM</button>
+    <button class="cbtn" id="simB">INJECT FAULT</button>
+    <a class="cbtn" id="ghlink" href="https://github.com/nstefoni" style="text-decoration:none">GITHUB ↗</a>
+    <span id="clock">--:--:-- UTC</span>
   </div>
+</header>
+<div id="banner">
+  <span id="bstate" style="color:var(--acc)">● WARMING UP PROBES</span>
+  <span id="bmeta">SHANNON H <b id="bH" style="color:var(--acc)">.00</b> · LOSS <span id="bloss">0%</span> · WINDOW 96 · BINS 12 · BASELINE 0.6–1.8×P50</span>
 </div>
-<div class="ui bot">
-  <div class="stats">
-    <div id="events"></div>
-    <div id="tag">● WARMING UP PROBES…</div>
-    <div id="stats">&nbsp;</div>
+<div id="grid">
+  <section class="panel" id="p-wave">
+    <div class="ptitle"><span>RTT CHANNELS · HELICORDER</span><span class="legend" id="legend"></span></div>
+    <div class="chart" data-view="wave"></div>
+  </section>
+  <div id="p-side">
+    <section class="panel" id="p-gauge">
+      <div class="ptitle"><span>SHANNON ENTROPY</span><span><b id="gv">.00</b></span></div>
+      <div class="chart" data-view="gauge"></div>
+    </section>
+    <section class="panel" id="p-events">
+      <div class="ptitle"><span>EVENT FEED</span><span id="evn">0</span></div>
+      <div id="evlist">—</div>
+    </section>
   </div>
-  <div class="right">
-    <div class="hint">DRAG = ORBIT · SCROLL = ZOOM · CLICK THE CONSOLE</div>
-    <a class="gh" href="https://github.com/nstefoni">GITHUB ↗</a>
-  </div>
+  <section class="panel" id="p-fall">
+    <div class="ptitle"><span>DISTRIBUTION WATERFALL · LAST 64 WINDOWS</span><span>OLD → NOW</span></div>
+    <div class="chart" data-view="fall"></div>
+  </section>
+  <section class="panel" id="p-hist">
+    <div class="ptitle"><span>RTT DISTRIBUTION · H BINS</span><span>0.6×P50 → 1.8×P50</span></div>
+    <div class="chart" data-view="hist"></div>
+  </section>
+  <section class="panel" id="p-trace">
+    <div class="ptitle"><span>ENTROPY TRACE · FULL HISTORY · PERSISTS ACROSS VISITS</span><span id="tspan"></span></div>
+    <div class="tracewrap"><canvas id="tl"></canvas></div>
+  </section>
 </div>
-<div class="tlwrap">
-  <div style="font-size:9px;letter-spacing:.3em;color:var(--dim);margin-bottom:5px">ENTROPY TRACE · FULL HISTORY · PERSISTS ACROSS VISITS</div>
-  <canvas id="tl" style="width:100%;height:54px;display:block;opacity:.95"></canvas>
 </div>
 <script type="module">
 import * as THREE from "https://esm.sh/three@0.160.0";
@@ -74,6 +111,7 @@ import * as THREE from "https://esm.sh/three@0.160.0";
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const COL = { bg: css("--bg"), ink: css("--ink"), dim: css("--dim"), acc: css("--acc"), alert: css("--alert"), warn: css("--warn") };
 const CH = ["#c8f04c", "#54d8e0", "#b48cff", "#6aa6ff"];
+const PANEL_BG = "#101316";
 
 const PROBES = [
   { name: "GH",  url: "https://api.github.com/", mode: "cors" },
@@ -84,14 +122,7 @@ const PROBES = [
 const stat = PROBES.map(() => ({ p50: 40, jit: 0, attempts: 0, fails: 0, win: [], lastLost: false }));
 let entropy = 0.05;
 
-// console state: channel toggles, probe rate, fault simulation
-const ctl = {
-  on: [true, true, true, true],
-  rate: 1,
-  rates: [2000, 900, 380],
-  rateNames: ["SLOW", "NORM", "FAST"],
-  simUntil: 0,
-};
+const ctl = { on: [true, true, true, true], rate: 1, rates: [2000, 900, 380], rateNames: ["SLOW", "NORM", "FAST"], simUntil: 0 };
 const simActive = () => Date.now() < ctl.simUntil;
 
 const CAP = 1600;
@@ -138,6 +169,7 @@ function feed(i, v) {
   stat[i].jit = J;
 }
 const lossOf = (i) => (ctl.on[i] && stat[i].attempts > 3 ? stat[i].fails / stat[i].attempts : 0);
+const lossAvg = () => PROBES.reduce((a, _, k) => a + lossOf(k), 0) / (ctl.on.filter(Boolean).length || 1);
 
 const BINS = 12;
 function shannonHist(values, k = BINS) {
@@ -157,6 +189,8 @@ function shannonHist(values, k = BINS) {
 }
 const recent = [];
 let liveHist = new Array(BINS).fill(0);
+const HFR = 64;
+const histHist = [];
 let lastZone = 0;
 const zoneOf = (e) => (e > 0.62 ? 2 : e > 0.4 ? 1 : 0);
 const zoneCol = (z) => (z === 2 ? COL.alert : z === 1 ? COL.warn : COL.acc);
@@ -169,7 +203,6 @@ let dirty = true;
     for (let i = 0; i < PROBES.length; i++) {
       if (!ctl.on[i]) { vals.push(-1); continue; }
       let v = await probe(i);
-      // fault injection: corrupt the measurement so the whole pipeline reacts
       if (v != null && simActive()) {
         v = v * (0.6 + Math.random() * 1.7) + (Math.random() < 0.18 ? v * 2.2 : 0);
         if (Math.random() < 0.1) v = null;
@@ -181,15 +214,16 @@ let dirty = true;
     }
     const { h, hist } = shannonHist(recent);
     liveHist = hist;
-    const nOn = ctl.on.filter(Boolean).length || 1;
-    const loss = PROBES.reduce((a, _, k) => a + lossOf(k), 0) / nOn;
-    entropy += (Math.min(1, h * 0.85 + loss * 1.2) - entropy) * 0.1;
+    const n = recent.length || 1;
+    histHist.push(hist.map((c) => c / n));
+    if (histHist.length > HFR) histHist.shift();
+    entropy += (Math.min(1, h * 0.85 + lossAvg() * 1.2) - entropy) * 0.1;
     if (stat.reduce((a, s) => a + s.attempts, 0) >= 8) {
       appendRound(vals);
       const z = zoneOf(entropy);
       if (z !== lastZone) {
         events.unshift({ t: Date.now(), z, e: +entropy.toFixed(2) });
-        events = events.slice(0, 30);
+        events = events.slice(0, 40);
         try { localStorage.setItem("js_events", JSON.stringify(events)); } catch {}
         lastZone = z;
       }
@@ -200,37 +234,71 @@ let dirty = true;
   }
 })();
 
+// ---------- HUD / dashboard chrome ----------
+const chBtns = [0, 1, 2, 3].map((i) => document.getElementById("ch" + i));
+const rateB = document.getElementById("rateB");
+const simB = document.getElementById("simB");
+function paintCtrls() {
+  chBtns.forEach((b, i) => {
+    b.style.borderColor = ctl.on[i] ? CH[i] : "";
+    b.style.color = ctl.on[i] ? CH[i] : "";
+    b.style.opacity = ctl.on[i] ? 1 : 0.5;
+  });
+  rateB.textContent = "RATE · " + ctl.rateNames[ctl.rate];
+  const sim = simActive();
+  simB.style.borderColor = sim ? COL.warn : COL.alert;
+  simB.style.color = sim ? COL.warn : COL.alert;
+  simB.textContent = sim ? "⚠ FAULT ACTIVE" : "INJECT FAULT";
+}
+chBtns.forEach((b, i) => b.addEventListener("click", () => { ctl.on[i] = !ctl.on[i]; paintCtrls(); ui(); }));
+rateB.addEventListener("click", () => { ctl.rate = (ctl.rate + 1) % 3; paintCtrls(); ui(); });
+simB.addEventListener("click", () => { ctl.simUntil = Date.now() + 20000; paintCtrls(); ui(); setTimeout(paintCtrls, 20500); });
+paintCtrls();
+setInterval(() => (document.getElementById("clock").textContent = new Date().toISOString().slice(11, 19) + " UTC"), 1000);
+
+const legend = document.getElementById("legend");
 function ui() {
-  const e = document.getElementById("efill"), v = document.getElementById("eval"), tag = document.getElementById("tag");
-  const col = zoneCol(zoneOf(entropy));
-  e.style.width = Math.max(3, entropy * 100) + "%"; e.style.background = col;
-  v.textContent = entropy.toFixed(2).slice(1); v.style.color = col;
+  const z = zoneOf(entropy);
+  const col = zoneCol(z);
+  const sim = simActive();
   const warm = stat.reduce((a, s) => a + s.attempts, 0) < 8;
-  tag.textContent = warm ? "● WARMING UP PROBES…" :
-    simActive() ? "⚠ FAULT INJECTION — SIMULATED DEGRADATION" :
-    entropy > 0.62 ? "▲ HIGH ENTROPY — DEGRADATION LIKELY" :
-    entropy > 0.4 ? "◆ ENTROPY RISING" : "● ALL SIGNALS NOMINAL";
-  tag.style.color = warm ? COL.dim : simActive() ? COL.warn : col;
-  document.getElementById("stats").innerHTML = PROBES.map((p, i) =>
-    ctl.on[i]
-      ? `<span style="color:${CH[i]}">${p.name}</span> <b>${stat[i].win.length ? stat[i].p50.toFixed(0) + "ms" : "··"}</b> ±${stat[i].jit.toFixed(1)}`
-      : `<span style="color:${CH[i]};opacity:.4">${p.name}</span> <span style="opacity:.5">OFF</span>`
-  ).join(" &nbsp;·&nbsp; ") + ` &nbsp;·&nbsp; LOSS <b>${(PROBES.reduce((a, _, k) => a + lossOf(k), 0) / (ctl.on.filter(Boolean).length || 1) * 100).toFixed(0)}%</b> &nbsp;·&nbsp; RATE <b>${ctl.rateNames[ctl.rate]}</b>`;
-  document.getElementById("events").innerHTML = events.slice(0, 4).map((ev) =>
-    `${hhmm(ev.t)} ${ev.z === 2 ? "▲" : ev.z === 1 ? "◆" : "●"} H ${String(ev.e).slice(1)}`
-  ).join("<br/>");
+  const bstate = document.getElementById("bstate");
+  bstate.textContent = warm ? "● WARMING UP PROBES" :
+    sim ? "⚠ FAULT INJECTION — SIMULATED DEGRADATION" :
+    z === 2 ? "▲ ALERT — DEGRADATION LIKELY" :
+    z === 1 ? "◆ ADVISORY — ENTROPY RISING" : "● NOMINAL — ALL SIGNALS STABLE";
+  bstate.style.color = warm ? COL.dim : sim ? COL.warn : col;
+  document.getElementById("banner").style.borderColor = warm ? "" : (sim ? COL.warn : col) + "55";
+  const bH = document.getElementById("bH");
+  bH.textContent = entropy.toFixed(2).slice(1);
+  bH.style.color = sim ? COL.warn : col;
+  document.getElementById("bloss").textContent = (lossAvg() * 100).toFixed(0) + "%";
+  document.getElementById("gv").textContent = entropy.toFixed(2).slice(1);
+  document.getElementById("gv").style.color = sim ? COL.warn : col;
+  legend.innerHTML = PROBES.map((p, i) =>
+    `<span style="color:${CH[i]};opacity:${ctl.on[i] ? 1 : 0.35}">■ ${p.name} ${ctl.on[i] && stat[i].win.length ? stat[i].p50.toFixed(0) + "ms ±" + stat[i].jit.toFixed(1) : ctl.on[i] ? "···" : "OFF"}</span>`
+  ).join("");
+  document.getElementById("evn").textContent = events.length;
+  document.getElementById("evlist").innerHTML = events.slice(0, 9).map((ev) =>
+    `<span class="t">${hhmm(ev.t)}</span> <span style="color:${zoneCol(ev.z)}">${ev.z === 2 ? "▲" : ev.z === 1 ? "◆" : "●"}</span> H ${String(ev.e).slice(1)} ${ev.z === 2 ? "DEGRADATION LIKELY" : ev.z === 1 ? "ENTROPY RISING" : "BACK TO NOMINAL"}`
+  ).join("<br/>") || "—";
+  if (track.length > 1) {
+    document.getElementById("tspan").textContent = hhmm(track[0].t) + " → " + hhmm(track[track.length - 1].t);
+  }
 }
 
+// ---------- 2D entropy trace ----------
 const tl = document.getElementById("tl");
 const tx = tl.getContext("2d");
 function drawTrace() {
   const r = tl.getBoundingClientRect();
+  if (!r.width) return;
   const d = Math.min(devicePixelRatio || 1, 2);
-  if (tl.width !== Math.round(r.width * d)) { tl.width = Math.round(r.width * d); tl.height = 54 * d; }
+  if (tl.width !== Math.round(r.width * d)) { tl.width = Math.round(r.width * d); tl.height = Math.round(r.height * d); }
   tx.setTransform(d, 0, 0, d, 0, 0);
-  const w = r.width, h = 54;
+  const w = r.width, h = r.height;
   tx.clearRect(0, 0, w, h);
-  const y4 = (e) => h - 4 - e * (h - 8);
+  const y4 = (e) => h - 3 - e * (h - 6);
   tx.fillStyle = "rgba(255,84,73,0.06)"; tx.fillRect(0, 0, w, y4(0.62));
   tx.fillStyle = "rgba(255,194,51,0.05)"; tx.fillRect(0, y4(0.62), w, y4(0.4) - y4(0.62));
   [0.4, 0.62].forEach((th) => {
@@ -247,554 +315,240 @@ function drawTrace() {
     tx.beginPath(); tx.moveTo(x4(track[i - 1].u), y4(track[i - 1].e)); tx.lineTo(x4(track[i].u), y4(track[i].e)); tx.stroke();
   }
 }
-drawTrace();
 
-// ================= 3D CONSOLE =================
-const cv = document.getElementById("c");
-const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
-renderer.setClearColor(new THREE.Color(COL.bg), 1);
-const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(new THREE.Color(COL.bg), 140, 380);
-const cam = new THREE.PerspectiveCamera(40, 1, 0.1, 800);
-
-let composer = null, bloomPass = null, reflector = null;
-try {
-  const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { Reflector }] = await Promise.all([
-    import("https://esm.sh/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js"),
-    import("https://esm.sh/three@0.160.0/examples/jsm/postprocessing/RenderPass.js"),
-    import("https://esm.sh/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js"),
-    import("https://esm.sh/three@0.160.0/examples/jsm/objects/Reflector.js"),
-  ]);
-  composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, cam));
-  bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.45, 0.8, 0.34);
-  composer.addPass(bloomPass);
-  reflector = new Reflector(new THREE.PlaneGeometry(116, 56), {
-    textureWidth: 1024, textureHeight: 1024, color: 0x2a2f34,
-  });
-  reflector.rotation.x = -Math.PI / 2;
-  reflector.position.y = -13.62;
-  scene.add(reflector);
-} catch { composer = null; reflector = null; }
-
-const hairMat = () => new THREE.LineBasicMaterial({ color: new THREE.Color(COL.dim), transparent: true, opacity: 0.45 });
-const faintMat = () => new THREE.LineBasicMaterial({ color: new THREE.Color(COL.dim), transparent: true, opacity: 0.16 });
-
-function frameRect(w, h) {
-  const g = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(-w / 2, -h / 2, 0), new THREE.Vector3(w / 2, -h / 2, 0),
-    new THREE.Vector3(w / 2, h / 2, 0), new THREE.Vector3(-w / 2, h / 2, 0),
-    new THREE.Vector3(-w / 2, -h / 2, 0),
-  ]);
-  return new THREE.Line(g, hairMat());
-}
-function makeLabel(text, color, scale = 1) {
-  const c = document.createElement("canvas");
-  c.width = 512; c.height = 44;
-  const g = c.getContext("2d");
-  g.font = "500 24px Menlo, monospace";
-  g.fillStyle = color; g.textBaseline = "middle";
-  g.fillText(text.toUpperCase(), 4, 22);
-  const tex = new THREE.CanvasTexture(c);
-  tex.minFilter = THREE.LinearFilter;
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
-  sp.scale.set(24 * scale, 2.06 * scale, 1);
-  sp.center.set(0, 0.5);
-  return sp;
-}
-function setLabel(sp, text, color) {
-  const c = sp.material.map.image;
-  const g = c.getContext("2d");
-  g.clearRect(0, 0, c.width, c.height);
-  g.font = "500 24px Menlo, monospace";
-  g.fillStyle = color; g.textBaseline = "middle";
-  g.fillText(text.toUpperCase(), 4, 22);
-  sp.material.map.needsUpdate = true;
-}
-
-const bootGroups = [];
-function bootIn(obj, delay) { obj.visible = false; bootGroups.push({ obj, delay }); return obj; }
-
-// ---- floor: translucent veil over the reflector ----
-const veil = new THREE.Mesh(new THREE.PlaneGeometry(116, 56), new THREE.MeshBasicMaterial({ color: new THREE.Color("#15181b"), transparent: true, opacity: 0.78 }));
-veil.rotation.x = -Math.PI / 2;
-veil.position.y = -13.55;
-scene.add(bootIn(veil, 0.0));
-const pEdge = frameRect(116, 56);
-pEdge.rotation.x = -Math.PI / 2; pEdge.position.y = -13.4;
-scene.add(bootIn(pEdge, 0.1));
-const grid = new THREE.GridHelper(800, 80, new THREE.Color(COL.dim), new THREE.Color(COL.dim));
-grid.material.transparent = true; grid.material.opacity = 0.04; grid.position.y = -15;
-scene.add(bootIn(grid, 0.0));
-
-// ---- dust motes (cheap atmosphere) ----
-const dustGeo = new THREE.BufferGeometry();
-const DN = 500, dp = new Float32Array(DN * 3);
-for (let i = 0; i < DN; i++) {
-  dp[i * 3] = (Math.random() - 0.5) * 150;
-  dp[i * 3 + 1] = -12 + Math.random() * 55;
-  dp[i * 3 + 2] = (Math.random() - 0.5) * 100;
-}
-dustGeo.setAttribute("position", new THREE.BufferAttribute(dp, 3));
-const dustTexC = document.createElement("canvas");
-dustTexC.width = dustTexC.height = 32;
-{
-  const g = dustTexC.getContext("2d");
-  const gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
-  gr.addColorStop(0, "rgba(233,237,226,0.9)");
-  gr.addColorStop(1, "rgba(233,237,226,0)");
-  g.fillStyle = gr; g.fillRect(0, 0, 32, 32);
-}
-const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
-  map: new THREE.CanvasTexture(dustTexC), size: 0.9, transparent: true, opacity: 0.22,
-  blending: THREE.AdditiveBlending, depthWrite: false,
-}));
-scene.add(bootIn(dust, 0.2));
-
-// ---- seismograph wall with CRT shader screen ----
-const WALL = { w: 64, h: 30, n: 110 };
-const wall = new THREE.Group();
-wall.position.set(0, 3.2, -16);
-wall.rotation.x = -0.06;
-scene.add(bootIn(wall, 0.5));
-wall.add(frameRect(WALL.w, WALL.h));
-const crt = new THREE.Mesh(
-  new THREE.PlaneGeometry(WALL.w, WALL.h),
-  new THREE.ShaderMaterial({
-    transparent: true,
-    uniforms: { uT: { value: 0 }, uZone: { value: new THREE.Color(COL.acc) }, uE: { value: 0 } },
-    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-    fragmentShader: `
-      varying vec2 vUv;
-      uniform float uT; uniform vec3 uZone; uniform float uE;
-      float rnd(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
-      void main(){
-        vec3 col = vec3(0.063,0.075,0.086);
-        float scan = smoothstep(0.35,0.65,abs(fract(vUv.y*90.0)-0.5));
-        col -= scan*0.022;
-        float n = (rnd(vUv*vec2(220.0,160.0)+fract(uT*0.37))-0.5)*0.028*(1.0+uE*2.0);
-        col += n;
-        float d = distance(vUv, vec2(0.5));
-        col -= d*d*0.16;
-        float edge = smoothstep(0.36,0.5,d);
-        col += uZone * edge * (0.045 + uE*0.12);
-        gl_FragColor = vec4(col, 0.94);
-      }`,
-  })
-);
-crt.position.z = -0.15;
-wall.add(crt);
-const laneH = WALL.h / 4;
-for (let i = 1; i < 4; i++) {
-  const y = -WALL.h / 2 + laneH * i;
-  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-WALL.w / 2, y, 0), new THREE.Vector3(WALL.w / 2, y, 0)]);
-  wall.add(new THREE.Line(g, faintMat()));
-}
-for (let gx = 1; gx < 8; gx++) {
-  const x = -WALL.w / 2 + (WALL.w / 8) * gx;
-  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, -WALL.h / 2, 0), new THREE.Vector3(x, WALL.h / 2, 0)]);
-  wall.add(new THREE.Line(g, faintMat()));
-}
-const laneLines = PROBES.map((_, i) => {
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(WALL.n * 3), 3));
-  g.setDrawRange(0, 0);
-  const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(CH[i]), transparent: true, opacity: 0.95 }));
-  l.frustumCulled = false;
-  wall.add(l);
-  return l;
-});
-const lossDots = PROBES.map(() => {
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(WALL.n * 3), 3));
-  g.setDrawRange(0, 0);
-  const p = new THREE.Points(g, new THREE.PointsMaterial({ color: new THREE.Color(COL.alert), size: 0.9 }));
-  p.frustumCulled = false;
-  wall.add(p);
-  return p;
-});
-const laneLabels = PROBES.map((p, i) => {
-  const sp = makeLabel(`${p.name} ···`, CH[i], 0.62);
-  sp.position.set(-WALL.w / 2 + 1, WALL.h / 2 - laneH * i - 2.4, 0.4);
-  wall.add(sp);
-  return sp;
-});
-const hdr = new THREE.Mesh(new THREE.PlaneGeometry(WALL.w, 2.6), new THREE.MeshBasicMaterial({ color: new THREE.Color("#1a1e22") }));
-hdr.position.set(0, WALL.h / 2 + 1.3, -0.05);
-wall.add(hdr);
-const wallTitle = makeLabel("RTT CHANNELS · LIVE", COL.dim, 0.62);
-wallTitle.position.set(-WALL.w / 2 + 1, WALL.h / 2 + 0.35, 0.1);
-wall.add(wallTitle);
-const clockSp = makeLabel("--:--:-- UTC", COL.ink, 0.62);
-clockSp.position.set(WALL.w / 2 - 13.5, WALL.h / 2 + 0.35, 0.1);
-wall.add(clockSp);
-setInterval(() => setLabel(clockSp, new Date().toISOString().slice(11, 19) + " UTC", COL.ink), 1000);
-const statusSp = makeLabel("STANDBY", COL.dim, 0.95);
-statusSp.position.set(-WALL.w / 2, WALL.h / 2 + 3.6, 0);
-wall.add(statusSp);
-const timeLabels = [0, 1, 2, 3].map((k) => {
-  const sp = makeLabel("--:--:--", COL.dim, 0.5);
-  sp.position.set(-WALL.w / 2 + (WALL.w / 3) * k - (k === 3 ? 7 : 0), -WALL.h / 2 - 1.6, 0);
-  wall.add(sp);
-  return sp;
-});
-const sweep = new THREE.Mesh(new THREE.PlaneGeometry(0.18, WALL.h - 0.4), new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.acc), transparent: true, opacity: 0.5 }));
-sweep.position.z = 0.25;
-wall.add(sweep);
-
-// ---- console desk with PHYSICAL CONTROLS ----
-const desk = new THREE.Group();
-desk.position.set(0, -12.6, 12);
-scene.add(bootIn(desk, 0.3));
-const deskTop = new THREE.Mesh(new THREE.BoxGeometry(74, 1.1, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color("#1a1e22") }));
-deskTop.rotation.x = 0.22;
-desk.add(deskTop);
-const deskEdge = frameRect(74, 12);
-deskEdge.rotation.x = -Math.PI / 2 + 0.22;
-deskEdge.position.y = 0.62;
-desk.add(deskEdge);
-const plate = makeLabel("JITTERSCOPE STATION 01 · BUE 34.6°S 58.4°W", COL.dim, 0.6);
-plate.position.set(-36, 2.6, -3.2);
-desk.add(plate);
-
-const hitTargets = [];
-function hitbox(w, h, d, action, data) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ visible: false }));
-  m.userData = { action, ...data };
-  hitTargets.push(m);
-  return m;
-}
-
-// channel switches: lever + LED + label
-const levers = [], leds = [];
-PROBES.forEach((p, i) => {
-  const g = new THREE.Group();
-  g.position.set(-28 + i * 7, 0.9, 1.2);
-  g.rotation.x = 0.22;
-  const base = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.8, 3.4), new THREE.MeshBasicMaterial({ color: new THREE.Color("#22262b") }));
-  g.add(base);
-  const lever = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.3, 0.5), new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.ink) }));
-  lever.position.y = 1.0;
-  lever.rotation.x = -0.5;
-  g.add(lever);
-  levers.push(lever);
-  const led = new THREE.Mesh(new THREE.SphereGeometry(0.4, 10, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(CH[i]) }));
-  led.position.set(0, 0.7, -2.1);
-  g.add(led);
-  leds.push(led);
-  const lab = makeLabel(p.name, CH[i], 0.42);
-  lab.position.set(-0.9, 1.6, -2.6);
-  g.add(lab);
-  const hb = hitbox(3.4, 4.5, 4.5, "chan", { i });
-  hb.position.y = 1;
-  g.add(hb);
-  desk.add(g);
-});
-
-// fault-injection button (guarded red)
-const simG = new THREE.Group();
-simG.position.set(16, 0.9, 1.2);
-simG.rotation.x = 0.22;
-const simRing = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.22, 10, 28), new THREE.MeshBasicMaterial({ color: new THREE.Color("#2a2f34") }));
-simRing.rotation.x = Math.PI / 2;
-simG.add(simRing);
-const simBtn = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.35, 0.9, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.alert) }));
-simBtn.position.y = 0.35;
-simG.add(simBtn);
-const simLab = makeLabel("INJECT FAULT", COL.alert, 0.46);
-simLab.position.set(-2.6, 1.9, -2.4);
-simG.add(simLab);
-const simHb = hitbox(4.4, 4, 4.4, "sim", {});
-simHb.position.y = 0.8;
-simG.add(simHb);
-desk.add(simG);
-
-// probe-rate knob
-const rateG = new THREE.Group();
-rateG.position.set(26, 0.9, 1.2);
-rateG.rotation.x = 0.22;
-const knobBase = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.7, 0.5, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color("#22262b") }));
-rateG.add(knobBase);
-const knob = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.9, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.ink) }));
-knob.position.y = 0.5;
-rateG.add(knob);
-const notch = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.3, 1.0), new THREE.MeshBasicMaterial({ color: new THREE.Color("#15181b") }));
-notch.position.set(0, 0.97, 0.55);
-knob.add(notch);
-const rateLab = makeLabel("RATE · NORM", COL.dim, 0.46);
-rateLab.position.set(-2.4, 1.9, -2.4);
-rateG.add(rateLab);
-const rateHb = hitbox(4.2, 4, 4.2, "rate", {});
-rateHb.position.y = 0.8;
-rateG.add(rateHb);
-desk.add(rateG);
-
-// ---- histogram wing ----
-const histo = new THREE.Group();
-histo.position.set(-47, -13.4, 4);
-histo.rotation.y = 0.66;
-scene.add(bootIn(histo, 0.9));
-const HW = 26, HH = 17;
-const hPanel = new THREE.Mesh(new THREE.PlaneGeometry(HW, HH), new THREE.MeshBasicMaterial({ color: new THREE.Color("#101316"), transparent: true, opacity: 0.85 }));
-hPanel.position.set(HW / 2 - 2, HH / 2, -1.3);
-histo.add(hPanel);
-const hFrame = frameRect(HW, HH);
-hFrame.position.set(HW / 2 - 2, HH / 2, -1.2);
-histo.add(hFrame);
-const histTitle = makeLabel("RTT DISTRIBUTION · H BINS", COL.dim, 0.56);
-histTitle.position.set(-2, HH + 1.1, -1.2);
-histo.add(histTitle);
-const histLo = makeLabel("0.6×P50", COL.dim, 0.44);
-histLo.position.set(-2, -1.7, 0); histo.add(histLo);
-const histHi = makeLabel("1.8×P50", COL.dim, 0.44);
-histHi.position.set(HW - 8.4, -1.7, 0); histo.add(histHi);
-const bars = [];
-for (let b = 0; b < BINS; b++) {
-  const m = new THREE.Mesh(
-    new THREE.BoxGeometry(1.45, 1, 1.45),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.acc), transparent: true, opacity: 0.92 })
-  );
-  m.position.set(b * (HW - 4) / BINS, 0.01, 0);
-  histo.add(m);
-  bars.push(m);
-}
-
-// ---- entropy column wing ----
-const colG = new THREE.Group();
-colG.position.set(47, -13.4, 4);
-colG.rotation.y = -0.66;
-scene.add(bootIn(colG, 1.1));
-const COLH = 22;
-const cPanel = new THREE.Mesh(new THREE.PlaneGeometry(9, COLH), new THREE.MeshBasicMaterial({ color: new THREE.Color("#101316"), transparent: true, opacity: 0.85 }));
-cPanel.position.set(0, COLH / 2, -1.0);
-colG.add(cPanel);
-const cFrame = frameRect(5, COLH);
-cFrame.position.y = COLH / 2;
-colG.add(cFrame);
-const colTitle = makeLabel("SHANNON H", COL.dim, 0.56);
-colTitle.position.set(-2.5, COLH + 1.1, 0);
-colG.add(colTitle);
-[[0, 0.4, COL.acc, 0.05], [0.4, 0.62, COL.warn, 0.07], [0.62, 1, COL.alert, 0.08]].forEach(([a, b, c, op]) => {
-  const band = new THREE.Mesh(
-    new THREE.PlaneGeometry(4.6, (b - a) * COLH),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color(c), transparent: true, opacity: op, side: THREE.DoubleSide })
-  );
-  band.position.set(0, (a + (b - a) / 2) * COLH, -0.4);
-  colG.add(band);
-});
-[0.4, 0.62].forEach((th) => {
-  const y = th * COLH;
-  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-3.4, y, 0), new THREE.Vector3(3.4, y, 0)]);
-  colG.add(new THREE.Line(g, hairMat()));
-  const sp = makeLabel("." + th * 100, COL.dim, 0.42);
-  sp.position.set(3.8, y - 0.7, 0);
-  colG.add(sp);
-});
-const colFill = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1, 1.6), new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.acc), transparent: true, opacity: 0.9 }));
-colG.add(colFill);
-const colVal = makeLabel(".00", COL.acc, 0.8);
-colVal.position.set(-1.9, -2.4, 0);
-colG.add(colVal);
-
-// ---- interaction: raycaster with click-vs-drag disambiguation ----
-const ray = new THREE.Raycaster();
-const ptr = new THREE.Vector2();
-let downAt = 0, downX = 0, downY = 0;
-function pick(e) {
-  ptr.x = (e.clientX / innerWidth) * 2 - 1;
-  ptr.y = -(e.clientY / innerHeight) * 2 + 1;
-  ray.setFromCamera(ptr, cam);
-  const hits = ray.intersectObjects(hitTargets, false);
-  return hits.length ? hits[0].object.userData : null;
-}
-cv.addEventListener("pointermove", (e) => {
-  if (dragging) return;
-  cv.style.cursor = pick(e) ? "pointer" : "grab";
-});
-function activate(ud) {
-  if (ud.action === "chan") {
-    ctl.on[ud.i] = !ctl.on[ud.i];
-    levers[ud.i].rotation.x = ctl.on[ud.i] ? -0.5 : 0.5;
-  } else if (ud.action === "sim") {
-    ctl.simUntil = Date.now() + 20000;
-    events.unshift({ t: Date.now(), z: 1, e: +entropy.toFixed(2) });
-  } else if (ud.action === "rate") {
-    ctl.rate = (ctl.rate + 1) % 3;
-    knob.rotation.y = [-0.7, 0, 0.7][ctl.rate];
-    setLabel(rateLab, "RATE · " + ctl.rateNames[ctl.rate], COL.dim);
-  }
-  ui();
-}
-
-// ---- station updates ----
-let laneCount = 0;
-function rebuildStation() {
-  const rounds = track.slice(-WALL.n);
-  if (rounds.length < 2) return;
-  laneCount = rounds.length;
-  for (let li = 0; li < 4; li++) {
-    const a = laneLines[li].geometry.attributes.position.array;
-    const la = lossDots[li].geometry.attributes.position.array;
-    let lossN = 0;
-    const yMid = WALL.h / 2 - laneH * li - laneH / 2;
-    const p = Math.max(stat[li].p50, 12);
-    for (let k = 0; k < rounds.length; k++) {
-      const x = -WALL.w / 2 + (k / (WALL.n - 1)) * WALL.w;
-      const v = rounds[k].vals[li];
-      const off = v === -1;
-      const dev = v == null || off ? 0 : Math.max(-1, Math.min(1, (v - p) / p));
-      a[k * 3] = x;
-      a[k * 3 + 1] = yMid + dev * (laneH / 2 - 0.7);
-      a[k * 3 + 2] = 0.2;
-      if (v === null) {
-        la[lossN * 3] = x; la[lossN * 3 + 1] = yMid - laneH / 2 + 0.8; la[lossN * 3 + 2] = 0.25;
-        lossN++;
-      }
-    }
-    laneLines[li].geometry.attributes.position.needsUpdate = true;
-    laneLines[li].material.opacity = ctl.on[li] ? 0.95 : 0.18;
-    lossDots[li].geometry.setDrawRange(0, lossN);
-    lossDots[li].geometry.attributes.position.needsUpdate = true;
-    setLabel(laneLabels[li], `${PROBES[li].name} ${!ctl.on[li] ? "OFF" : stat[li].win.length ? stat[li].p50.toFixed(0) + "ms ±" + stat[li].jit.toFixed(1) : "···"}`, CH[li]);
-  }
-  [0, 1, 2, 3].forEach((k) => {
-    const idx = Math.floor((rounds.length - 1) * (k / 3));
-    setLabel(timeLabels[k], hhmm(rounds[idx].t), COL.dim);
-  });
-  const z = zoneOf(entropy);
-  setLabel(statusSp,
-    simActive() ? "⚠ FAULT INJECTION ACTIVE" :
-    z === 2 ? "▲ DEGRADATION LIKELY" : z === 1 ? "◆ ENTROPY RISING" : "● ALL SIGNALS NOMINAL",
-    simActive() ? COL.warn : zoneCol(z));
-  sweep.position.x = -WALL.w / 2 + ((rounds.length - 1) / (WALL.n - 1)) * WALL.w;
-}
-
-function resize() {
+// ================= WEBGL: one renderer, one view per panel =================
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("gl"), antialias: true });
+renderer.setScissorTest(true);
+function sizeGL() {
   renderer.setSize(innerWidth, innerHeight, false);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
-  if (composer) composer.setSize(innerWidth, innerHeight);
 }
-addEventListener("resize", resize); resize();
+addEventListener("resize", sizeGL); sizeGL();
 
-let theta = 0.0, phi = 1.12, radius = 86, dragging = false, lastX = 0, lastY = 0;
-cv.addEventListener("pointerdown", (e) => {
-  dragging = true; lastX = e.clientX; lastY = e.clientY;
-  downAt = performance.now(); downX = e.clientX; downY = e.clientY;
-});
-addEventListener("pointerup", (e) => {
-  dragging = false;
-  if (performance.now() - downAt < 280 && Math.hypot(e.clientX - downX, e.clientY - downY) < 6) {
-    const ud = pick(e);
-    if (ud) activate(ud);
+const views = [];
+function addView(name, build) {
+  const el = document.querySelector(`[data-view="${name}"]`);
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(38, 1, 0.1, 500);
+  const v = { el, scene, cam, update: null, bg: new THREE.Color(PANEL_BG) };
+  build(v);
+  views.push(v);
+  return v;
+}
+const faint = (op = 0.16) => new THREE.LineBasicMaterial({ color: new THREE.Color(COL.dim), transparent: true, opacity: op });
+
+// ---- VIEW 1: helicorder waveform — 4 glowing ribbons with depth ----
+const WN = 110;
+addView("wave", (v) => {
+  v.cam.position.set(0, 10, 44);
+  const lanes = [], glows = [], dots = [];
+  for (let i = 0; i < 4; i++) {
+    const mk = (op, wfactor) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(WN * 3), 3));
+      g.setDrawRange(0, 0);
+      const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: new THREE.Color(CH[i]), transparent: true, opacity: op, blending: wfactor ? THREE.AdditiveBlending : THREE.NormalBlending }));
+      l.frustumCulled = false;
+      v.scene.add(l);
+      return l;
+    };
+    lanes.push(mk(0.95, false));
+    const gl = mk(0.25, true); gl.scale.set(1, 1.06, 1); glows.push(gl);
+    const dg = new THREE.BufferGeometry();
+    dg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(WN * 3), 3));
+    dg.setDrawRange(0, 0);
+    const pts = new THREE.Points(dg, new THREE.PointsMaterial({ color: new THREE.Color(COL.alert), size: 0.7 }));
+    pts.frustumCulled = false;
+    v.scene.add(pts);
+    dots.push(pts);
   }
-});
-addEventListener("pointermove", (e) => {
-  if (!dragging) return;
-  theta -= (e.clientX - lastX) * 0.0045;
-  phi -= (e.clientY - lastY) * 0.003;
-  theta = Math.max(-0.85, Math.min(0.85, theta));
-  phi = Math.max(0.78, Math.min(1.38, phi));
-  lastX = e.clientX; lastY = e.clientY;
-});
-cv.addEventListener("wheel", (e) => {
-  e.preventDefault();
-  radius = Math.max(50, Math.min(150, radius + e.deltaY * 0.1));
-}, { passive: false });
-
-// ---- boot + adaptive performance ----
-const BOOT_MSGS = [
-  [0.0, "INITIALIZING JITTERSCOPE STATION 01"],
-  [0.9, "DEPLOYING PROBES · GH NPM CDN VRC"],
-  [1.8, "CALIBRATING BASELINE · P50 WINDOW"],
-  [2.7, "SHANNON ENGINE ONLINE · 12 BINS"],
-  [3.6, "STATION ONLINE — MEASURING YOUR CONNECTION"],
-];
-const bootEl = document.getElementById("boot");
-const ease = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
-let fpsAcc = 0, fpsN = 0, degraded = false, lastFrame = performance.now();
-
-let t = 0, bootT = 0;
-function frame() {
-  const now = performance.now();
-  const dt = now - lastFrame; lastFrame = now;
-  t += 0.016; bootT += 0.016;
-  if (dirty) { rebuildStation(); dirty = false; }
-
-  if (bootT > 4.5 && !degraded) {
-    fpsAcc += dt; fpsN++;
-    if (fpsN >= 90) {
-      if (fpsAcc / fpsN > 38) { // < ~26fps → degrade gracefully
-        degraded = true;
-        if (reflector) reflector.visible = false;
-        dust.visible = false;
-        renderer.setPixelRatio(1);
-        if (bloomPass) bloomPass.strength = 0.3;
-      } else degraded = true;
+  const grid = new THREE.GridHelper(160, 32, new THREE.Color(COL.dim), new THREE.Color(COL.dim));
+  grid.material.transparent = true; grid.material.opacity = 0.07;
+  grid.position.y = -13;
+  v.scene.add(grid);
+  v.scene.fog = new THREE.Fog(new THREE.Color(PANEL_BG), 60, 140);
+  let tt = 0;
+  v.update = () => {
+    tt += 0.016;
+    const rounds = track.slice(-WN);
+    if (rounds.length > 1) {
+      for (let li = 0; li < 4; li++) {
+        const a = lanes[li].geometry.attributes.position.array;
+        const da = dots[li].geometry.attributes.position.array;
+        let lossN = 0;
+        const yMid = 9.5 - li * 6.4;
+        const p = Math.max(stat[li].p50, 12);
+        for (let k = 0; k < rounds.length; k++) {
+          const x = -30 + (k / (WN - 1)) * 60;
+          const val = rounds[k].vals[li];
+          const off = val === -1;
+          const dev = val == null || off ? 0 : Math.max(-1, Math.min(1, (val - p) / p));
+          a[k * 3] = x; a[k * 3 + 1] = yMid + dev * 2.7; a[k * 3 + 2] = 0;
+          if (val === null) { da[lossN * 3] = x; da[lossN * 3 + 1] = yMid - 3.1; da[lossN * 3 + 2] = 0.1; lossN++; }
+        }
+        const reveal = Math.floor(rounds.length * bootReveal());
+        lanes[li].geometry.setDrawRange(0, reveal);
+        lanes[li].geometry.attributes.position.needsUpdate = true;
+        lanes[li].material.opacity = ctl.on[li] ? 0.95 : 0.15;
+        const ga = glows[li].geometry.attributes.position.array;
+        ga.set(a);
+        glows[li].geometry.setDrawRange(0, reveal);
+        glows[li].geometry.attributes.position.needsUpdate = true;
+        glows[li].material.opacity = ctl.on[li] ? 0.22 : 0.04;
+        dots[li].geometry.setDrawRange(0, lossN);
+        dots[li].geometry.attributes.position.needsUpdate = true;
+      }
     }
+    v.cam.position.x = Math.sin(tt * 0.18) * 3.5;
+    v.cam.position.y = 9 + Math.sin(tt * 0.13) * 1.2;
+    v.cam.lookAt(0, -1, 0);
+  };
+});
+
+// ---- VIEW 2: entropy gauge — radial instrument ----
+addView("gauge", (v) => {
+  v.cam.position.set(0, 0, 24);
+  const R = 9, A0 = Math.PI * 1.25, A1 = -Math.PI * 0.25;
+  const arc = (f0, f1, color, op, r0 = R - 0.9, r1 = R) => {
+    const g = new THREE.RingGeometry(r0, r1, 48, 1, A0 + (A1 - A0) * f0, (A1 - A0) * (f1 - f0));
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: op, side: THREE.DoubleSide }));
+    v.scene.add(m);
+    return m;
+  };
+  arc(0, 0.4, COL.acc, 0.8);
+  arc(0.4, 0.62, COL.warn, 0.8);
+  arc(0.62, 1, COL.alert, 0.8);
+  arc(0, 1, COL.dim, 0.12, R - 2.1, R - 1.6);
+  for (let k = 0; k <= 10; k++) {
+    const f = k / 10, an = A0 + (A1 - A0) * f;
+    const g = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(Math.cos(an) * (R - 1.5), Math.sin(an) * (R - 1.5), 0),
+      new THREE.Vector3(Math.cos(an) * (R - 2.1), Math.sin(an) * (R - 2.1), 0),
+    ]);
+    v.scene.add(new THREE.Line(g, faint(0.4)));
   }
+  const needle = new THREE.Mesh(new THREE.BoxGeometry(0.28, R - 2.6, 0.28), new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.ink) }));
+  needle.geometry.translate(0, (R - 2.6) / 2, 0);
+  v.scene.add(needle);
+  const hub = new THREE.Mesh(new THREE.CircleGeometry(0.7, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(COL.ink) }));
+  v.scene.add(hub);
+  let shown = 0;
+  v.update = () => {
+    shown += (entropy - shown) * 0.08;
+    const f = Math.min(1, Math.max(0, shown));
+    needle.rotation.z = A0 + (A1 - A0) * f - Math.PI / 2;
+    const z = zoneOf(shown);
+    needle.material.color.set(simActive() ? COL.warn : z === 0 ? COL.ink : zoneCol(z));
+    v.cam.position.y = -1.2;
+    v.cam.lookAt(0, -1.2, 0);
+  };
+});
 
-  for (const m of BOOT_MSGS) if (bootT >= m[0] && bootT < m[0] + 0.95) bootEl.textContent = m[1];
-  for (const b of bootGroups) {
-    if (!b.obj.visible && bootT > b.delay) b.obj.visible = true;
-  }
-  const reveal = ease((bootT - 1.0) / 1.6);
-  laneLines.forEach((l) => l.geometry.setDrawRange(0, Math.floor(laneCount * reveal)));
+// ---- VIEW 3: shannon waterfall — the distribution as terrain over time ----
+addView("fall", (v) => {
+  v.cam.position.set(16, 14, 26);
+  const W = 26, D = 30;
+  const geo = new THREE.PlaneGeometry(W, D, BINS - 1, HFR - 1);
+  geo.rotateX(-Math.PI / 2);
+  const colors = new Float32Array(geo.attributes.position.count * 3);
+  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, wireframe: true, transparent: true, opacity: 0.85 }));
+  v.scene.add(mesh);
+  v.scene.fog = new THREE.Fog(new THREE.Color(PANEL_BG), 30, 75);
+  const tmp = new THREE.Color();
+  const baseBin = Math.floor(((1.0 - 0.6) / 1.2) * BINS);
+  v.update = () => {
+    const pos = geo.attributes.position.array;
+    const col = geo.attributes.color.array;
+    for (let r = 0; r < HFR; r++) {
+      const hist = histHist[histHist.length - HFR + r] || null;
+      for (let b = 0; b < BINS; b++) {
+        const idx = (r * BINS + b) * 3;
+        const p = hist ? hist[b] : 0;
+        pos[idx + 1] = p * 26;
+        const dist = Math.abs(b - baseBin);
+        tmp.set(dist <= 1 ? COL.acc : dist <= 3 ? COL.warn : COL.alert);
+        const age = r / (HFR - 1);
+        const k = (0.15 + p * 3.2) * (0.25 + age * 0.75);
+        col[idx] = tmp.r * k; col[idx + 1] = tmp.g * k; col[idx + 2] = tmp.b * k;
+      }
+    }
+    geo.attributes.position.needsUpdate = true;
+    geo.attributes.color.needsUpdate = true;
+    v.cam.lookAt(0, 3, 0);
+  };
+});
 
-  const z = zoneOf(entropy);
-  const zc = new THREE.Color(simActive() ? COL.warn : zoneCol(z));
-  crt.material.uniforms.uT.value = t;
-  crt.material.uniforms.uZone.value = zc;
-  crt.material.uniforms.uE.value = entropy;
-
-  const n = recent.length || 1;
+// ---- VIEW 4: live histogram bars ----
+addView("hist", (v) => {
+  v.cam.position.set(0, 9, 26);
+  const bars = [];
   const baseBin = Math.floor(((1.0 - 0.6) / 1.2) * BINS);
   for (let b = 0; b < BINS; b++) {
-    const target = Math.min(HH - 1.5, Math.max(0.06, (liveHist[b] / n) * 34));
-    const m = bars[b];
-    m.scale.y += (target - m.scale.y) * 0.12;
-    m.position.y = m.scale.y / 2;
-    const dist = Math.abs(b - baseBin);
-    const danger = dist <= 1 ? COL.acc : dist <= 3 ? COL.warn : COL.alert;
-    m.material.color.lerp(new THREE.Color(danger), 0.1);
-    m.material.opacity = liveHist[b] > 0 ? 0.92 : 0.18;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, 1.5), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.92 }));
+    m.position.x = (b - (BINS - 1) / 2) * 2.1;
+    v.scene.add(m);
+    bars.push(m);
   }
-  const eh = Math.max(0.05, entropy * COLH);
-  colFill.scale.y += (eh - colFill.scale.y) * 0.15;
-  colFill.position.y = colFill.scale.y / 2;
-  colFill.material.color.lerp(zc, 0.12);
-  setLabel(colVal, entropy.toFixed(2).slice(1), simActive() ? COL.warn : zoneCol(z));
+  const base = new THREE.GridHelper(30, 10, new THREE.Color(COL.dim), new THREE.Color(COL.dim));
+  base.material.transparent = true; base.material.opacity = 0.1;
+  base.position.y = -0.01;
+  v.scene.add(base);
+  const tmp = new THREE.Color();
+  v.update = () => {
+    const n = recent.length || 1;
+    for (let b = 0; b < BINS; b++) {
+      const target = Math.max(0.05, (liveHist[b] / n) * 30);
+      const m = bars[b];
+      m.scale.y += (target - m.scale.y) * 0.12;
+      m.position.y = m.scale.y / 2;
+      const dist = Math.abs(b - baseBin);
+      tmp.set(dist <= 1 ? COL.acc : dist <= 3 ? COL.warn : COL.alert);
+      m.material.color.lerp(tmp, 0.12);
+      m.material.opacity = liveHist[b] > 0 ? 0.92 : 0.2;
+    }
+    v.cam.lookAt(0, 4.5, 0);
+  };
+});
 
-  leds.forEach((led, i) => {
-    const on = ctl.on[i];
-    const lost = stat[i].lastLost;
-    led.material.color.set(!on ? "#3a3f44" : lost ? COL.alert : CH[i]);
-    led.scale.setScalar(on && !lost ? 1 + Math.sin(t * 2.4 + i) * 0.06 : on ? 0.8 + Math.abs(Math.sin(t * 6)) * 0.35 : 0.7);
-  });
-  simBtn.position.y = simActive() ? 0.18 + Math.abs(Math.sin(t * 7)) * 0.1 : 0.35;
-  simBtn.material.color.set(simActive() ? COL.warn : COL.alert);
-  dust.rotation.y = t * 0.008;
-  sweep.material.opacity = 0.3 + Math.sin(t * 4) * 0.2;
-  if (bloomPass && !degraded) bloomPass.strength = 0.4 + entropy * 0.5 + Math.sin(t * 1.7) * 0.04;
+// ---------- render loop with per-panel scissor ----------
+function renderView(v) {
+  const r = v.el.getBoundingClientRect();
+  if (r.width < 10 || r.height < 10 || r.bottom < 0 || r.top > innerHeight) return;
+  const left = r.left, bottom = innerHeight - r.bottom;
+  renderer.setViewport(left, bottom, r.width, r.height);
+  renderer.setScissor(left, bottom, r.width, r.height);
+  renderer.setClearColor(v.bg, 1);
+  v.cam.aspect = r.width / r.height;
+  v.cam.updateProjectionMatrix();
+  if (v.update) v.update();
+  renderer.render(v.scene, v.cam);
+}
 
-  const intro = ease(bootT / 3.2);
-  const r = 230 - (230 - radius) * intro;
-  const ph = 0.7 + (phi - 0.7) * intro;
-  const th = -1.1 + (theta + 1.1) * intro;
-  const sway = Math.sin(t * 0.25) * 0.025 * intro;
-  const shake = z === 2 ? (Math.random() - 0.5) * 0.6 : 0;
-  cam.position.set(
-    Math.sin(th + sway) * Math.sin(ph) * r + shake,
-    Math.cos(ph) * r * 0.85,
-    Math.cos(th + sway) * Math.sin(ph) * r + shake * 0.5
-  );
-  cam.lookAt(0, 1.5, -4);
-  try {
-    if (composer) composer.render(); else renderer.render(scene, cam);
-  } catch { composer = null; renderer.render(scene, cam); }
+// ---------- boot cascade ----------
+const BOOT_MSGS = [
+  [0.0, "INITIALIZING JITTERSCOPE STATION 01"],
+  [0.8, "DEPLOYING PROBES · GH NPM CDN VRC"],
+  [1.6, "CALIBRATING BASELINE · P50 WINDOW"],
+  [2.4, "SHANNON ENGINE ONLINE · 12 BINS"],
+  [3.2, "STATION ONLINE — MEASURING YOUR CONNECTION"],
+];
+const PANEL_ORDER = ["p-wave", "p-gauge", "p-events", "p-fall", "p-hist", "p-trace"];
+PANEL_ORDER.forEach((id, i) => setTimeout(() => document.getElementById(id).classList.add("on"), 350 + i * 260));
+let bootT = 0;
+const bootEl = document.getElementById("bsub");
+const ease = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+const bootReveal = () => ease((bootT - 0.6) / 1.8);
+
+function frame() {
+  bootT += 0.016;
+  for (const m of BOOT_MSGS) if (bootT >= m[0] && bootT < m[0] + 0.78) bootEl.textContent = m[1];
+  if (dirty) dirty = false;
+  for (const v of views) renderView(v);
   requestAnimationFrame(frame);
 }
 frame();
+ui();
 </script>
 </body>
 </html>
