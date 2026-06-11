@@ -142,8 +142,8 @@ const PROBES = [
 ];
 const stat = PROBES.map(() => ({ p50: 40, jit: 0, attempts: 0, fails: 0, win: [], lastLost: false }));
 let entropy = 0.05;
-const ctl = { on: [true, true, true, true], rate: 2, rates: [2000, 900, 380], rateNames: ["SLOW", "NORM", "FAST"], simUntil: 0 };
-const simActive = () => Date.now() < ctl.simUntil;
+const ctl = { on: [true, true, true, true], rate: 2, rates: [2000, 900, 380], rateNames: ["SLOW", "NORM", "FAST"], sim: false };
+const simActive = () => ctl.sim;
 
 const CAP = 1600;
 let track = [];
@@ -271,11 +271,7 @@ function paintCtrls() {
 }
 chBtns.forEach((b, i) => b.addEventListener("click", () => { ctl.on[i] = !ctl.on[i]; paintCtrls(); ui(); }));
 rateB.addEventListener("click", () => { ctl.rate = (ctl.rate + 1) % 3; paintCtrls(); ui(); });
-simB.addEventListener("click", () => {
-  ctl.simUntil = simActive() ? 0 : Date.now() + 20000;
-  paintCtrls(); ui();
-  setTimeout(paintCtrls, 20600);
-});
+simB.addEventListener("click", () => { ctl.sim = !ctl.sim; paintCtrls(); ui(); });
 paintCtrls();
 setInterval(() => (document.getElementById("clock").textContent = new Date().toISOString().slice(11, 19) + " UTC"), 1000);
 
