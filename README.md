@@ -7,3 +7,25 @@
 <sub><code>rendered on request: rust on cloudflare's edge probing 4 targets — shannon entropy over the rtt window · want YOUR connection measured? <a href="https://nstefoni.github.io/nstefoni/">open the live jitterscope ↗</a></code></sub>
 
 </div>
+
+<details>
+<summary><code>■ how does this work?</code></summary>
+<br/>
+
+> most monitoring is reactive: it tells you when something already broke. **jitterscope** is a digital seismograph — it measures how chaotic latency is *becoming*, and detects the signature of chaos before failure is visible.
+
+the metric is **shannon entropy over the rtt window**: `H(X) = -Σ P(xᵢ)·log₂P(xᵢ)`, normalized 0–1. predictable latency concentrates in few bins → low H → healthy. erratic latency spreads across bins → high H → stress signature. variance climbs *before* packet loss — entropy is the leading indicator, downtime is the lagging one.
+
+this card is not an image — it's an instrument. every view triggers a [rust worker](edge/) on cloudflare's edge that fires 48 real http probes at 4 targets (github · npm · cloudflare · vercel), computes H over the window, pulls live github stats, and renders this svg on the spot. served stale-while-revalidate so it loads instantly; the timestamp tells you when the probes ran.
+
+three layers, one idea:
+
+| layer | where | measures |
+|---|---|---|
+| this card | rust→wasm on cloudflare workers, per view | edge → 4 public targets |
+| [live dashboard](https://nstefoni.github.io/nstefoni/) | your browser | **your own connection**, recorded + exportable |
+| [ci fallback](.github/workflows/) | github actions, cron 6h | runner → targets, committed history |
+
+the real thing — udp probes, sliding window, tui — is being built in rust at [nstefoni/jitterscope](https://github.com/nstefoni/jitterscope). docs: [how it works](SETUP.md) · [the rust explained line by line](edge/RUST_NOTES.md) · [design system](web/DESIGN.md)
+
+</details>

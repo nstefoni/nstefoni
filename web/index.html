@@ -20,6 +20,9 @@
 html,body{height:100%;background:var(--bg)}
 body{font-family:var(--mono);color:var(--ink);overflow:hidden;font-variant-numeric:tabular-nums}
 #app{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column;padding:14px;gap:10px}
+.corner{position:fixed;width:20px;height:20px;border:1px solid var(--hair);z-index:2;pointer-events:none}
+.k1{top:8px;left:8px;border-right:0;border-bottom:0}.k2{top:8px;right:8px;border-left:0;border-bottom:0}
+.k3{bottom:8px;right:8px;border-left:0;border-top:0}.k4{bottom:8px;left:8px;border-right:0;border-top:0}
 header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:4px 4px 0}
 .brand{display:flex;align-items:baseline;gap:14px;white-space:nowrap}
 .brand .nm{font-size:15px;font-weight:500;letter-spacing:.35em}
@@ -78,6 +81,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;pa
 </style>
 </head>
 <body>
+<div class="corner k1"></div><div class="corner k2"></div><div class="corner k3"></div><div class="corner k4"></div>
 <div id="app">
 <header>
   <div class="brand">
@@ -103,29 +107,29 @@ header{display:flex;align-items:center;justify-content:space-between;gap:16px;pa
 </div>
 <div id="grid">
   <section class="panel" id="p-wave">
-    <div class="ptitle"><span>RTT CHANNELS · HELICORDER · <b id="lastS" style="letter-spacing:.05em">—</b></span><span class="legend" id="legend"></span><span class="help" data-tip="La latencia de tu conexión hacia 4 redes distintas, en vivo. Cada línea es una ruta; un pico = lag momentáneo; un punto rojo abajo = paquete perdido. La cinta se desplaza como un sismógrafo: lo nuevo entra por la derecha.">?</span></div>
+    <div class="ptitle"><span>■ 01 / RTT CHANNELS · <b id="lastS" style="letter-spacing:.05em">—</b></span><span class="legend" id="legend"></span><span class="help" data-tip="La latencia de tu conexión hacia 4 redes distintas, en vivo. Cada línea es una ruta; un pico = lag momentáneo; un punto rojo abajo = paquete perdido. La cinta se desplaza como un sismógrafo: lo nuevo entra por la derecha.">?</span></div>
     <div class="chart"><canvas id="cv-wave"></canvas></div>
   </section>
   <div id="p-side">
     <section class="panel" id="p-gauge">
-      <div class="ptitle"><span>SHANNON ENTROPY</span><span style="display:flex;gap:8px;align-items:center"><b id="gv">.00</b><span class="help" data-tip="El índice de caos de tu conexión (0–1). Latencia predecible = aguja a la izquierda (sana). Valores erráticos = aguja hacia el rojo. Es la señal temprana: la entropía sube ANTES de que algo se caiga.">?</span></span></div>
+      <div class="ptitle"><span>■ 02 / SHANNON ENTROPY</span><span style="display:flex;gap:8px;align-items:center"><b id="gv">.00</b><span class="help" data-tip="El índice de caos de tu conexión (0–1). Latencia predecible = aguja a la izquierda (sana). Valores erráticos = aguja hacia el rojo. Es la señal temprana: la entropía sube ANTES de que algo se caiga.">?</span></span></div>
       <div class="chart"><canvas id="cv-gauge"></canvas></div>
     </section>
     <section class="panel" id="p-events">
-      <div class="ptitle"><span>EVENT FEED</span><span id="evn">0</span></div>
+      <div class="ptitle"><span>■ 03 / EVENT FEED</span><span id="evn">0</span></div>
       <div id="evlist">—</div>
     </section>
   </div>
   <section class="panel" id="p-fall">
-    <div class="ptitle"><span id="fallT">DISTRIBUTION WATERFALL · 3D · LAST 64 WINDOWS</span><span style="display:flex;gap:8px;align-items:center"><span class="seg" id="vizB" style="pointer-events:auto"><span data-v="0" class="on">SURFACE</span><span data-v="1">CHAMBER</span><span data-v="2">HIGHWAY</span></span><span>OLD → NOW</span><span class="help" data-tip="La forma de tu latencia a través del tiempo. Una montaña angosta y verde = red ordenada y predecible. Si la masa se desparrama hacia los bordes rojos, la distribución se está volviendo caótica — eso ES la entropía subiendo. Probá INJECT FAULT y mirala deformarse." id="fallHelp">?</span></span></div>
+    <div class="ptitle"><span id="fallT">■ 04 / DISTRIBUTION WATERFALL · LAST 64 WINDOWS</span><span style="display:flex;gap:8px;align-items:center"><span class="seg" id="vizB" style="pointer-events:auto"><span data-v="0" class="on">SURFACE</span><span data-v="1">CHAMBER</span><span data-v="2">HIGHWAY</span></span><span>OLD → NOW</span><span class="help" data-tip="La forma de tu latencia a través del tiempo. Una montaña angosta y verde = red ordenada y predecible. Si la masa se desparrama hacia los bordes rojos, la distribución se está volviendo caótica — eso ES la entropía subiendo. Probá INJECT FAULT y mirala deformarse." id="fallHelp">?</span></span></div>
     <div class="chart"><canvas id="cv-fall"></canvas></div>
   </section>
   <section class="panel" id="p-hist">
-    <div class="ptitle"><span>RTT DISTRIBUTION · H BINS</span><span style="display:flex;gap:8px;align-items:center"><span>0.6×P50 → 1.8×P50</span><span class="help" data-tip="Dónde caen tus últimas 96 mediciones respecto de tu latencia típica (P50, línea punteada). Una sola barra alta = predecible. Barras repartidas = caos. De este histograma sale el número H del gauge.">?</span></span></div>
+    <div class="ptitle"><span>■ 05 / RTT DISTRIBUTION · H BINS</span><span style="display:flex;gap:8px;align-items:center"><span>0.6×P50 → 1.8×P50</span><span class="help" data-tip="Dónde caen tus últimas 96 mediciones respecto de tu latencia típica (P50, línea punteada). Una sola barra alta = predecible. Barras repartidas = caos. De este histograma sale el número H del gauge.">?</span></span></div>
     <div class="chart"><canvas id="cv-hist"></canvas></div>
   </section>
   <section class="panel" id="p-trace">
-    <div class="ptitle"><span>ENTROPY TRACE · FULL HISTORY · PERSISTS ACROSS VISITS</span><span style="display:flex;gap:8px;align-items:center"><button class="cbtn" id="expB" style="padding:3px 8px;pointer-events:auto">EXPORT JSON</button><span id="tspan"></span><span class="help" data-tip="El registro histórico de H — verde estable, ámbar subiendo, rojo peligro. Se guarda en tu navegador: cerrá y volvé mañana, tu historia sigue acá. Los cortes son gaps entre sesiones.">?</span></span></div>
+    <div class="ptitle"><span>■ 06 / ENTROPY TRACE · PERSISTS ACROSS VISITS</span><span style="display:flex;gap:8px;align-items:center"><button class="cbtn" id="expB" style="padding:3px 8px;pointer-events:auto">EXPORT JSON</button><span id="tspan"></span><span class="help" data-tip="El registro histórico de H — verde estable, ámbar subiendo, rojo peligro. Se guarda en tu navegador: cerrá y volvé mañana, tu historia sigue acá. Los cortes son gaps entre sesiones.">?</span></span></div>
     <div class="chart"><canvas id="tl"></canvas></div>
   </section>
 </div>
@@ -817,9 +821,9 @@ function hwUpdate() {
 }
 
 const VIZ_T = [
-  "DISTRIBUTION WATERFALL · 3D · LAST 64 WINDOWS",
-  "ENTROPY CHAMBER · 300 PARTICLES · AGITATION = H",
-  "PACKET HIGHWAY · 1 CAR = 1 REAL PACKET · SPACING = JITTER",
+  "■ 04 / DISTRIBUTION WATERFALL · LAST 64 WINDOWS",
+  "■ 04 / ENTROPY CHAMBER · AGITATION = H",
+  "■ 04 / PACKET HIGHWAY · SPACING = JITTER",
 ];
 const VIZ_TIP = [
   "La forma de tu latencia a través del tiempo. Una montaña angosta y verde = red ordenada y predecible. Si la masa se desparrama hacia los bordes rojos, la distribución se está volviendo caótica — eso ES la entropía subiendo. Probá INJECT FAULT y mirala deformarse.",
