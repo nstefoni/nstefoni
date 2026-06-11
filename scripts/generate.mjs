@@ -209,8 +209,6 @@ function card(series, m, gh) {
   for (const l of cfg.about_en) { sections += txt(X0, y, l, { size: 13, fill: T.ink, ls: 1.2 }); y += 22; }
   y += 8;
   for (const l of cfg.about_es) { sections += txt(X0, y, l, { size: 12, fill: T.dim, ls: 1.2 }); y += 20; }
-  // mono 12px + ls 1.2 ≈ 8.4px/char; keep a clear gap after the final line
-  sections += `<rect x="${(X0 + cfg.about_es[cfg.about_es.length - 1].length * 8.45 + 12).toFixed(0)}" y="${y - 32}" width="7" height="12" fill="${T.accent}"><animate attributeName="opacity" values="1;1;0;0" dur="1.15s" repeatCount="indefinite"/></rect>`;
   y += 16;
   sections += `<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="${T.hair}" stroke-width="1"/>`;
   y += 40;
@@ -255,11 +253,11 @@ ${lossTicks}
 <animateTransform attributeName="transform" type="translate" from="${X0} 0" to="${X1} 0" dur="11s" repeatCount="indefinite"/>
 </line></g>
 ${stats ? txt(X1, 204, stats, { size: 9, ls: 1.5, anchor: "end", fill: T.faint }) : ""}
-${txt(X0, 348, `JITTERSCOPE · ${n} SAMPLES · GITHUB CI · LAST PROBE ${date} UTC`, { size: 10 })}
+${txt(X0, 348, `JITTERSCOPE · GITHUB CI PROBE · ${date} UTC`, { size: 10 })}
 <g>${txt(X1 - eW - 78, 348, "ENTROPY", { size: 10 })}
 <rect x="${X1 - eW - 4}" y="340" width="${eW}" height="6" fill="none" stroke="${T.hair}" stroke-width="0.6"/>
 <rect x="${X1 - eW - 4}" y="340" width="${Math.max(3, eW * m.entropy).toFixed(1)}" height="6" fill="${eCol}">
-<animate attributeName="opacity" values="1;0.55;1" dur="3.1s" repeatCount="indefinite"/>
+<animate attributeName="width" values="${frames.map((f) => { const w16 = f.slice(-16); let J = 0; for (let i = 1; i < w16.length; i++) J += (Math.abs(w16[i] - w16[i - 1]) - J) / 16; return Math.max(3, eW * Math.min(1, 0.12 + 0.55 * (J / (J + 45)) + m.loss * 1.4)).toFixed(1); }).join(";")}" dur="${DUR}s" repeatCount="indefinite" calcMode="linear"/>
 </rect>
 ${txt(X1 + 4, 348, m.entropy.toFixed(2).slice(1), { size: 10, fill: eCol, ls: 0.5, anchor: "end" })}</g>
 ${sections}
