@@ -20,7 +20,16 @@ valores caoticos → masa repartida → H alta → red bajo estres.
 **calibracion (importante):** los bins NO van del min al max de la ventana — van de `0.6×p50` a `1.8×p50`, anclados a la mediana. si binneas sobre el rango observado, una ventana angosta reparte el ruido normal en todos los bins y H da falso positivo. anclando al baseline, "predecible" = "cerca de lo esperado". una red puede tener jitter ALTO pero CONSTANTE (enlace saturado estable) → H baja → sana bajo carga. eso shannon lo distingue y un promedio de jitter (rfc 3550) no — esa es toda la tesis.
 
 el indice final suma perdida de paquetes: `entropia = min(1, H·0.85 + loss·1.5)`.
-umbrales: `< .40` lima (nominal) · `.40-.62` ambar (subiendo) · `> .62` rojo (degradacion probable).
+
+**umbrales (tres calibraciones, una x instrumento):** cada entorno tiene su propio piso de ruido, asi q los colores no comparten umbral:
+
+| instrumento | lima | ambar | rojo | xq |
+|---|---|---|---|---|
+| ci + web (node/navegador) | `< .40` | `.40-.62` | `> .62` | conexiones reusadas, piso bajo |
+| card local (worker, 48 sondas) | `< .78` | `.78-.90` | `> .90` | cada sonda paga dns/tls → piso ≈ .75 |
+| mesh (6 rounds x region) | `< .60` | `.60-.75` | `> .75` | ventana chica y ruidosa; calibrado a la distribucion real (~.45-.70) |
+
+la regla de calibracion es siempre la misma: los umbrales abrazan la distribucion q el instrumento realmente mide — un panel q nunca cambia de color no informa.
 
 ## las 3 capas (espejo de la arquitectura del producto)
 
@@ -31,6 +40,8 @@ umbrales: `< .40` lima (nominal) · `.40-.62` ambar (subiendo) · `> .62` rojo (
 | arena 3d q mide la conexion del visitante | dashboard local next.js |
 
 **capa 1 — la card (`edge/`):** rust compilado a wasm. cada request: lee `config.json` del repo, tira 48 sondas http (4 hosts en paralelo, cadena secuencial x host xq el jitter es entre muestras consecutivas), shannon sobre la ventana, stats de github via graphql, svg animado. fallback: si algo falla, 302 a la card commiteada. el codigo explicado linea x linea esta en `edge/RUST_NOTES.md`.
+
+**el mesh (dentro de la card):** 9 durable objects con location hints, uno fijado en cada region de cloudflare (wnam, enam, sam, weur, eeur, apac, oc, afr, me) — cada uno sondea los mismos targets desde su continente. los targets del mesh NO son los de la card: gh/npm/vrc son anycast, cada region recibe respuesta de un servidor al lado → rutas cortas y perfectas → H plana → verde eterno. el mesh sondea **origenes unicos** (anchors de ripe atlas: sao paulo, bangalore, johannesburgo — servidores q viven en UN solo lugar fisico) para q cada region mida una ruta de largo distinto, mas UN target anycast (cloudflare) como **control**: si el control se pone rojo, el problema es el vantage point, no la ruta. diseño experimento-con-control, no decoracion. se configura en `config.json` → `mesh_probes` (fallback: `probes`). ojo: los anchors responden solo http plano (puerto 80) — para el worker no es problema.
 
 **capa 2 — el ci (`scripts/generate.mjs`):** mismo pipeline en node, corre cada 6hs, commitea `assets/card.svg` + `assets/telemetry.json`. respaldo del worker y serie historica gratis en los commits.
 
@@ -49,6 +60,7 @@ fondo carbon neutro `#191c1e` + tinta `#e9ede2` + un solo acento lima `#c8f04c`.
 | textos, about, stack | `config.json` (el worker lo levanta solo en ~10 min) |
 | paleta | `config.json` → `"theme"` |
 | hosts o cantidad de sondas | `config.json` → `probes` / `rounds` |
+| targets del mesh regional | `config.json` → `mesh_probes` (1 control anycast + origenes unicos) |
 | frecuencia del cron | `.github/workflows/update-banner.yml` |
 | la metrica / el dibujo | `edge/src/lib.rs` y `scripts/generate.mjs` — son GEMELOS, tocar ambos |
 | la arena 3d | `web/index.html` |
@@ -75,6 +87,8 @@ free tier de cloudflare: 100k req/dia, 50 subrequests x req. la card usa ~50. co
 - **worker da ssl error** → subdominio workers.dev recien creado, el cert tarda minutos
 - **action sin permisos** → settings → actions → general → read and write permissions
 - **CONTRIB no aparece** → falta el secret `GITHUB_TOKEN` del worker
+- **mesh todo rojo de golpe** → probablemente un anchor muerto: un host caido mete loss≈.25 en las 9 regiones (`curl http://br-sao-as22548.anchors.atlas.ripe.net/` para chequear). swap del anchor en `config.json` → `mesh_probes` — el worker lo levanta solo, sin redeploy. lista de reemplazo: atlas.ripe.net/anchors
+- **mesh todo verde x meses** → el control (CF) deberia estar SIEMPRE verde; si los origenes unicos tambien, o la red mundial anda perfecta o los umbrales quedaron flojos — recalibrar contra `telemetry.json`
 - **compilar rust falla** → `rustup target add wasm32-unknown-unknown` y `cargo install worker-build`
 
 ## proximo paso (otro repo)

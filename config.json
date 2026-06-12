@@ -102,5 +102,11 @@
     { "name": "CF", "url": "https://www.cloudflare.com/cdn-cgi/trace" },
     { "name": "VRC", "url": "https://vercel.com/" }
   ],
+  "mesh_probes": [
+    { "name": "CF", "url": "https://www.cloudflare.com/cdn-cgi/trace", "role": "control-anycast" },
+    { "name": "SAO", "url": "http://br-sao-as22548.anchors.atlas.ripe.net/", "role": "origin-sam" },
+    { "name": "BLR", "url": "http://in-blr-as14061.anchors.atlas.ripe.net/", "role": "origin-apac" },
+    { "name": "JNB", "url": "http://za-jnb-as37468.anchors.atlas.ripe.net/", "role": "origin-afr" }
+  ],
   "rounds": 12
 }

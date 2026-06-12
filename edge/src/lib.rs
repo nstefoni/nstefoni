@@ -12,6 +12,17 @@ const RAW: &str = "https://raw.githubusercontent.com/nstefoni/nstefoni/main";
 const MONO: &str = "ui-monospace,'SF Mono','Cascadia Mono','JetBrains Mono','Roboto Mono',Menlo,Consolas,monospace";
 const BINS: usize = 12;
 
+// color thresholds — two instruments, two calibrations:
+// · LOCAL (48 samples, one vantage): edge probes pay DNS/TLS per request,
+//   noise floor ≈ .75 → warn/alert sit above it.
+// · MESH (6 rounds per region, unique-origin targets): smaller window, live
+//   distribution ≈ .45–.70 → thresholds hug it so the map can change color.
+//   an instrument that always says the same thing informs nothing.
+const LOCAL_WARN: f64 = 0.78;
+const LOCAL_ALERT: f64 = 0.90;
+const MESH_WARN: f64 = 0.60;
+const MESH_ALERT: f64 = 0.75;
+
 // ---------- types ----------
 #[derive(Clone, Copy)]
 struct Sample {
@@ -95,10 +106,10 @@ async fn timed_fetch(url: &str, timeout_ms: u64) -> Sample {
 
 async fn collect(cfg: &Value) -> Vec<(String, Sample)> {
     let rounds = cfg["rounds"].as_u64().unwrap_or(12) as usize;
-    collect_list(&cfg["probes"], rounds).await
+    collect_list(&cfg["probes"], rounds, 2500).await
 }
 
-async fn collect_list(probes_v: &Value, rounds: usize) -> Vec<(String, Sample)> {
+async fn collect_list(probes_v: &Value, rounds: usize, timeout_ms: u64) -> Vec<(String, Sample)> {
     let probes: Vec<(String, String)> = probes_v
         .as_array()
         .map(|a| {
@@ -116,10 +127,10 @@ async fn collect_list(probes_v: &Value, rounds: usize) -> Vec<(String, Sample)> 
     // one sequential chain per host (interarrival jitter needs ordered samples),
     // all hosts probed concurrently
     let chains = join_all(probes.iter().map(|(name, url)| async move {
-        let _ = timed_fetch(url, 2500).await; // warm DNS/TLS
+        let _ = timed_fetch(url, timeout_ms).await; // warm DNS/TLS
         let mut out = Vec::with_capacity(rounds);
         for _ in 0..rounds {
-            out.push((name.clone(), timed_fetch(url, 2500).await));
+            out.push((name.clone(), timed_fetch(url, timeout_ms).await));
             Delay::from(Duration::from_millis(25)).await;
         }
         out
@@ -252,6 +263,36 @@ const REGIONS: [(&str, &str); 9] = [
     ("oc", "OC"), ("afr", "AFR"), ("me", "ME"),
 ];
 
+// dot-matrix landmask: 64×32 equirectangular cells (lat 75°N..56°S), one u64
+// per row, bit c = lon −180 + c·5.625°. generated from natural earth 110m land.
+const LAND: [u64; 32] = [
+    0x007fd2000fc3cc00, 0xfffff878078e9ffc, 0xfffffffc118cfffc, 0x3ffffff6000c7ff8,
+    0x11fffff6801cff00, 0x01fffffec03dfe00, 0x01ffffff805ffc00, 0x02fffe9b001ffc00,
+    0x005fffeac007fc00, 0x015fffc30007fc00, 0x003fffc7c003f800, 0x003fffffc0027000,
+    0x003ff3bfe0006000, 0x000e63ffe0006000, 0x0026217fe0018000, 0x000420ffe0000000,
+    0x000041ffc03c0000, 0x001200fc007c0000, 0x009800fc00fc0000, 0x0304007c01fc0000,
+    0x0000007c03fc0000, 0x0280007c01fc0000, 0x03c0017c01f80000, 0x27e0013c01f00000,
+    0x07f0003800780000, 0x07f0003800780000, 0x0620001800780000, 0x0600000000380000,
+    0x0000000000080000, 0x0000000000080000, 0x0000000000080000, 0x0000000000080000,
+];
+
+// rough continental boxes → index into REGIONS. this paints a 5.6°-cell map,
+// not a geography exam — close enough at this resolution.
+fn region_of(lon: f64, lat: f64) -> Option<usize> {
+    if lon < -170.0 && lat > 45.0 { return Some(0); }
+    if lat < -9.0 && lon > 110.0 { return Some(6); }
+    if (-170.0..-30.0).contains(&lon) {
+        if lat >= 13.0 { return Some(if lon < -100.0 { 0 } else { 1 }); }
+        return Some(2);
+    }
+    if lat >= 12.0 && lat < 42.0 && lon >= 26.0 && lon < 63.0 { return Some(8); }
+    if lat < 36.0 && lon >= -20.0 && lon < 52.0 { return Some(7); }
+    if (-25.0..16.0).contains(&lon) { return Some(3); }
+    if (16.0..60.0).contains(&lon) { return Some(4); }
+    if lon >= 60.0 { return Some(5); }
+    None
+}
+
 #[durable_object]
 pub struct RegionProbe {
     _state: State,
@@ -266,7 +307,11 @@ impl DurableObject for RegionProbe {
     async fn fetch(&self, mut req: Request) -> Result<Response> {
         let body: Value = req.json().await?;
         let rounds = body["rounds"].as_u64().unwrap_or(6) as usize;
-        let series = collect_list(&body["probes"], rounds).await;
+        // tighter timeout than the local card: a dead anchor must not make the
+        // chain (1 warm + 6 rounds) overrun the 9s budget in region_call —
+        // 7×~1225ms ≈ 8.6s worst case still reports the healthy hosts. 1200ms
+        // leaves cushion for the longest healthy routes (OC→JNB ≈ 2×RTT ≈ 1s).
+        let series = collect_list(&body["probes"], rounds, 1200).await;
         let norm = normalized(&series);
         let loss = series.iter().filter(|(_, s)| s.lost).count() as f64 / series.len().max(1) as f64;
         Response::from_json(&serde_json::json!({ "norm": norm, "loss": loss }))
@@ -297,7 +342,15 @@ async fn region_call(env: &Env, hint: &str, payload: String) -> Option<Value> {
 }
 
 async fn mesh_probe(env: &Env, cfg: &Value) -> MeshResult {
-    let payload = serde_json::json!({ "probes": cfg["probes"], "rounds": 6 }).to_string();
+    // mesh targets ≠ card targets. GH/NPM/VRC are anycast: every region gets
+    // answered by a server next door → short perfect routes → flat H → the map
+    // never changes color. the mesh wants single-origin targets (RIPE Atlas
+    // anchors) so each region measures a route of different length, plus one
+    // anycast target as control — if the control goes red, suspect the vantage
+    // point, not the route. configured in config.json → mesh_probes; falls
+    // back to the card's probes if absent.
+    let probes = if cfg["mesh_probes"].is_array() { &cfg["mesh_probes"] } else { &cfg["probes"] };
+    let payload = serde_json::json!({ "probes": probes, "rounds": 6 }).to_string();
     let raw = join_all(REGIONS.iter().map(|(hint, code)| {
         let p = payload.clone();
         async move { (code.to_string(), region_call(env, hint, p).await) }
@@ -489,7 +542,7 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
     };
     let e_w = 90.0;
     // site calibration: edge probes pay DNS/TLS per request, noise floor ≈ .75
-    let e_col = if m.entropy > 0.9 { &t.alert } else if m.entropy > 0.78 { &t.warn } else { &t.accent };
+    let e_col = if m.entropy > LOCAL_ALERT { &t.alert } else if m.entropy > LOCAL_WARN { &t.warn } else { &t.accent };
     let mut stats: Vec<String> = Vec::new();
     if let Some(c) = gh.1 {
         stats.push(format!("CONTRIB {}", c));
@@ -524,13 +577,67 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
         h
     };
     sections.push_str(&header("01 / MESH — ENTROPY BY REGION", &mut y));
+    // dot-matrix world map, each land cell painted by its region's entropy
+    let (mcols, mrows) = (64usize, 32usize);
+    let pitch = 7.0;
+    let (lat_top, lat_bot) = (75.0_f64, -56.0_f64);
+    let (map_x, map_y) = (x0 + ((x1 - x0) - 64.0 * pitch) / 2.0, y);
+    let map_w = mcols as f64 * pitch;
+    let map_h = mrows as f64 * pitch;
+    let mut buckets: Vec<String> = vec![String::new(); 10]; // 9 regions + unclassified
+    for r in 0..mrows {
+        let lat = lat_top + (r as f64 + 0.5) * (lat_bot - lat_top) / mrows as f64;
+        for c in 0..mcols {
+            if (LAND[r] >> c) & 1 == 0 {
+                continue;
+            }
+            let lon = -180.0 + (c as f64 + 0.5) * 360.0 / mcols as f64;
+            let idx = region_of(lon, lat).unwrap_or(9);
+            buckets[idx].push_str(&format!(
+                r#"<rect x="{:.0}" y="{:.0}" width="5" height="5" rx="1"/>"#,
+                map_x + c as f64 * pitch,
+                map_y + r as f64 * pitch
+            ));
+        }
+    }
+    for (idx, cells) in buckets.iter().enumerate() {
+        if cells.is_empty() {
+            continue;
+        }
+        let (col, op) = if idx < 9 {
+            match mesh.regions.get(idx).and_then(|(_, h)| *h) {
+                Some(hv) => (
+                    if hv > MESH_ALERT { t.alert.as_str() } else if hv > MESH_WARN { t.warn.as_str() } else { t.accent.as_str() },
+                    "0.9",
+                ),
+                None => (t.faint.as_str(), "0.5"),
+            }
+        } else {
+            (t.faint.as_str(), "0.35")
+        };
+        sections.push_str(&format!(r#"<g fill="{col}" opacity="{op}">{cells}</g>"#));
+    }
+    // sensor markers — one pulse per region probe
+    const ANCHORS: [(f64, f64); 9] = [
+        (-115.0, 42.0), (-80.0, 40.0), (-58.0, -15.0), (2.0, 48.0), (30.0, 52.0),
+        (105.0, 32.0), (134.0, -25.0), (20.0, 5.0), (45.0, 27.0),
+    ];
+    for (lon, lat) in ANCHORS {
+        let px = map_x + (lon + 180.0) / 360.0 * map_w;
+        let py = map_y + (lat_top - lat) / (lat_top - lat_bot) * map_h;
+        sections.push_str(&format!(
+            r#"<circle cx="{px:.0}" cy="{py:.0}" r="2.2" fill="{}"><animate attributeName="opacity" values="1;0.25;1" dur="2.4s" repeatCount="indefinite"/></circle>"#,
+            t.ink
+        ));
+    }
+    y += map_h + 30.0;
     let cell_w = (x1 - x0) / REGIONS.len() as f64;
     for (i, (code, h)) in mesh.regions.iter().enumerate() {
         let cx = x0 + i as f64 * cell_w;
         sections.push_str(&txt(cx, y, code, TxtOpt { size: 9, fill: &t.dim, ls: 1.5, anchor: "start", weight: 400 }));
         match h {
             Some(hv) => {
-                let col = if *hv > 0.9 { &t.alert } else if *hv > 0.78 { &t.warn } else { &t.accent };
+                let col = if *hv > MESH_ALERT { &t.alert } else if *hv > MESH_WARN { &t.warn } else { &t.accent };
                 let v = format!("{:.2}", hv);
                 sections.push_str(&txt(cx, y + 17.0, &v[1..], TxtOpt { size: 11, fill: col, ls: 0.5, anchor: "start", weight: 500 }));
                 let bw = cell_w - 26.0;
