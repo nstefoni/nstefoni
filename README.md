@@ -14,6 +14,14 @@
 <summary><code>■ how does this work? · english</code></summary>
 <br/>
 
+**□ the simple version — no jargon**
+
+imagine the hum of a refrigerator. when everything's fine, the hum is steady; right before something breaks, it starts to stutter — even though the fridge still works. this card listens to the internet's hum: every time someone opens this profile, a small program i wrote sends 48 tiny signals to four big internet services and times how long each takes to come back. steady times → healthy connection. times that wobble in a disorganized way → early warning: trouble shows up in the rhythm *before* anything visibly fails. and the picture above is not a saved image — it gets drawn fresh from those measurements at the exact moment you opened this page. the **entropy** number scores how messy the rhythm is, from 0 (perfectly steady) to 1 (chaos).
+
+---
+
+**■ the technical version**
+
 > most monitoring is reactive: it tells you when something already broke. **jitterscope** is a digital seismograph — it measures how chaotic latency is *becoming*, and detects the signature of chaos before failure is visible.
 
 the metric is **shannon entropy over the rtt window**: `H(X) = -Σ P(xᵢ)·log₂P(xᵢ)`, normalized 0–1. predictable latency concentrates in few bins → low H → healthy. erratic latency spreads across bins → high H → stress signature. variance climbs *before* packet loss — entropy is the leading indicator, downtime is the lagging one.
@@ -35,6 +43,14 @@ the real thing — udp probes, sliding window, tui — is being built in rust at
 <details>
 <summary><code>■ ¿cómo funciona esto? · español</code></summary>
 <br/>
+
+**□ la versión simple — sin tecnicismos**
+
+imaginate el zumbido de una heladera. cuando todo está bien, el zumbido es parejo; justo antes de romperse empieza a trastabillar — aunque la heladera todavía funcione. esta card escucha el zumbido de internet: cada vez que alguien abre este perfil, un programita que escribí manda 48 señales chiquitas a cuatro servicios grandes de internet y cronometra cuánto tarda cada una en volver. tiempos parejos → conexión sana. tiempos que bailan de forma desordenada → alerta temprana: los problemas aparecen en el ritmo *antes* de que algo falle a la vista. y el dibujo de arriba no es una imagen guardada — se genera fresco con esas mediciones en el momento exacto en que abriste esta página. el número de **entropy** califica qué tan desprolijo es el ritmo, de 0 (perfectamente estable) a 1 (caos).
+
+---
+
+**■ la versión técnica**
 
 > la mayoría del monitoreo es reactivo: te avisa cuando algo ya se rompió. **jitterscope** es un sismógrafo digital — mide qué tan caótica se está *volviendo* la latencia, y detecta la firma del caos antes de que la falla sea visible.
 
