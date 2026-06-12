@@ -4,3 +4,7 @@ compatibility_date = "2025-01-01"
 
 [build]
 command = "worker-build --release"
+
+[[kv_namespaces]]
+binding = "VIEWS"
+id = "780323dcac594c1b9d4541fe0e7aa390"

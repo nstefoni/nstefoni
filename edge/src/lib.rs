@@ -272,7 +272,7 @@ fn ghost_jitter(dur: f64, amp: f64) -> String {
     )
 }
 
-fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (Option<i64>, Option<i64>)) -> String {
+fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (Option<i64>, Option<i64>), views: Option<u64>) -> String {
     let w = 880.0;
     let x0 = 48.0;
     let x1 = w - 48.0;
@@ -371,6 +371,9 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
     }
     if let Some(r) = gh.0 {
         stats.push(format!("REPOS {}", r));
+    }
+    if let Some(v) = views {
+        stats.push(format!("VIEWS {}", v));
     }
     stats.push(format!("P50 {:.0}MS", m.p50));
     stats.push(format!("JIT {:.1}MS", m.jit));
@@ -560,11 +563,30 @@ async fn fetch(_req: Request, env: Env, ctx: Context) -> Result<Response> {
     }
 }
 
+// ---------- views counter ----------
+// every render = one real view reaching the edge. camo's cache makes this a
+// floor, not an exact count — and that's fine: it counts measurements, not eyes.
+// KV read+increment+write; races at profile scale are noise.
+async fn bump_views(env: &Env) -> Option<u64> {
+    let kv = env.kv("VIEWS").ok()?;
+    let n = kv
+        .get("count")
+        .text()
+        .await
+        .ok()
+        .flatten()
+        .and_then(|s| s.parse::<u64>().ok())
+        .unwrap_or(0)
+        + 1;
+    kv.put("count", n.to_string()).ok()?.execute().await.ok()?;
+    Some(n)
+}
+
 async fn run(env: &Env) -> Result<String> {
     let mut cfg_res = Fetch::Request(ua_request(&format!("{}/config.json", RAW))?).send().await?;
     let cfg: Value = cfg_res.json().await?;
-    let (series, gh) = futures::join!(collect(&cfg), gh_stats(&cfg, env));
+    let (series, gh, views) = futures::join!(collect(&cfg), gh_stats(&cfg, env), bump_views(env));
     let m = analyze(&series);
     let t = Theme::from(&cfg);
-    Ok(card(&cfg, &t, &series, &m, gh))
+    Ok(card(&cfg, &t, &series, &m, gh, views))
 }
