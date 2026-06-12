@@ -4,7 +4,7 @@
 
 <br/>
 
-<sub><code>rendered on request: rust on cloudflare's edge probing 4 targets — shannon entropy over the rtt window</code></sub>
+<sub><code>rendered on request: rust on cloudflare's edge probing 4 targets from 9 regions — shannon entropy over the rtt window</code></sub>
 
 <sub><code>want YOUR connection measured? → <a href="https://nstefoni.github.io/nstefoni/">open the live jitterscope ↗</a></code></sub>
 
@@ -18,18 +18,19 @@
 
 the metric is **shannon entropy over the rtt window**: `H(X) = -Σ P(xᵢ)·log₂P(xᵢ)`, normalized 0–1. in plain words: latency has a rhythm. on a healthy connection every probe comes back in roughly the same time, so the histogram piles into a few bins → low H. under stress the times scatter all over → H climbs toward 1. and the rhythm gets messy *before* packets actually drop — entropy is the leading indicator, downtime is the lagging one.
 
-this card is not an image — it's an instrument. every view triggers a [rust worker](edge/) on cloudflare's edge (a small program running in a datacenter near whoever's looking) that fires 48 real http probes at 4 targets (github · npm · cloudflare · vercel) — actual requests, each one timed — computes H over the window, pulls live github stats, and renders this svg on the spot. the drawing up top was made for *this* visit; the timestamp tells you when the probes ran. served stale-while-revalidate so it loads instantly.
+four layers, each running somewhere different:
 
-four layers, one idea:
+**layer 1 — the card** ([edge/](edge/), rust→wasm). when someone opens this profile, the README image points — through camo, github's image proxy — at a cloudflare worker. rust compiled to webassembly wakes up: it reads `config.json` from the repo, fires 48 http probes — 4 hosts in parallel, a sequential chain per host, because jitter lives between consecutive samples — computes shannon over the window, pulls github stats via graphql, and draws the animated svg on the spot. if anything fails, it 302s to the committed card. the natural intuition is that there are nodes measuring all the time: no — the measurement is born when someone looks.
 
-| layer | where | measures |
-|---|---|---|
-| this card | rust→wasm on cloudflare workers, per view | edge → 4 public targets |
-| edge mesh | durable objects pinned in 9 cloudflare regions | the same targets seen from 9 continents-ish, entropy per region + pooled trend |
-| [live dashboard](https://nstefoni.github.io/nstefoni/) | your browser | **your own connection**, recorded + exportable |
-| [ci fallback](.github/workflows/) | github actions, cron 6h | runner → targets, committed history |
+**layer 2 — the mesh** (durable objects). the same probe runs in parallel from 9 cloudflare regions — one durable object pinned to each by location hint. every region computes its own H and paints its slice of the world map; together they feed the pooled trend. nine seismographs, one reading.
 
-the real thing — udp probes, sliding window, tui — is being built in rust at [nstefoni/jitterscope](https://github.com/nstefoni/jitterscope). docs: [how it works](SETUP.md) · [the rust explained line by line](edge/RUST_NOTES.md) · [design system](web/DESIGN.md)
+**layer 3 — the ci** ([scripts/generate.mjs](scripts/generate.mjs), node). the same pipeline rewritten in javascript runs every 6 hours as a github action and commits `assets/card.svg` + telemetry — it's the worker's fallback, and as a bonus the historical series lives in the commit log. they're twins: touch the metric in one, you touch it in the other.
+
+**layer 4 — the site** ([web/](web/), your browser). the page at github.io measures the visitor's own connection: a 4-channel helicorder, a shannon gauge, an event feed and the 3d panel. your connection, recorded and exportable.
+
+one note of technical honesty: there's no udp in workers nor in the browser — what's measured here is http rtt. the real thing, with udp pings, sliding window and a tui, is being built in rust at [nstefoni/jitterscope](https://github.com/nstefoni/jitterscope); the profile is the concept model.
+
+docs: [how it works](SETUP.md) · [the rust explained line by line](edge/RUST_NOTES.md) · [design system](web/DESIGN.md)
 
 </details>
 
@@ -41,17 +42,18 @@ the real thing — udp probes, sliding window, tui — is being built in rust at
 
 la métrica es **entropía de shannon sobre la ventana de rtt**: `H(X) = -Σ P(xᵢ)·log₂P(xᵢ)`, normalizada 0–1. en criollo: la latencia tiene un ritmo. con la conexión sana cada probe vuelve en más o menos el mismo tiempo, el histograma se apila en pocos bins → H baja. bajo estrés los tiempos se desparraman → H trepa hacia 1. y el ritmo se ensucia *antes* de que se pierdan paquetes — la entropía es el indicador adelantado, el downtime es el atrasado.
 
-esta card no es una imagen — es un instrumento. cada visita dispara un [worker en rust](edge/) en el edge de cloudflare (un programa chico corriendo en un datacenter cerca del que mira) que lanza 48 probes http reales contra 4 targets (github · npm · cloudflare · vercel) — requests de verdad, cada una cronometrada — calcula H sobre la ventana, trae stats de github en vivo y renderiza este svg en el momento. el dibujo de arriba se hizo para *esta* visita; el timestamp te dice cuándo corrieron los probes. se sirve stale-while-revalidate así carga instantáneo.
+son cuatro capas, y cada una corre en un lugar distinto:
 
-cuatro capas, una idea:
+**capa 1 — la card** ([edge/](edge/), rust→wasm). cuando alguien abre este perfil, la imagen del README apunta — vía camo, el proxy de imágenes de github — a un worker de cloudflare. ahí se despierta rust compilado a webassembly: lee `config.json` del repo, tira 48 sondas http — 4 hosts en paralelo, cadena secuencial por host, porque el jitter vive entre muestras consecutivas — calcula shannon sobre la ventana, levanta los stats de github vía graphql y dibuja el svg animado en el momento. si algo falla, hace un 302 a la card commiteada. la intuición natural sería que hay nodos midiendo todo el tiempo: no — la medición nace cuando alguien mira.
 
-| capa | dónde | mide |
-|---|---|---|
-| esta card | rust→wasm en cloudflare workers, por visita | edge → 4 targets públicos |
-| mesh de edge | durable objects fijados en 9 regiones de cloudflare | los mismos targets vistos desde 9 regiones del planeta, entropía por región + tendencia agregada |
-| [dashboard en vivo](https://nstefoni.github.io/nstefoni/) | tu navegador | **tu propia conexión**, grabada + exportable |
-| [fallback de ci](.github/workflows/) | github actions, cron cada 6h | runner → targets, historial commiteado |
+**capa 2 — el mesh** (durable objects). el mismo probe corre en paralelo desde 9 regiones de cloudflare — un durable object fijado en cada una por location hint. cada región calcula su propia H y pinta su pedazo del mapa; juntas alimentan la tendencia agregada. nueve sismógrafos, una lectura.
 
-lo de verdad — probes udp, sliding window, tui — se está construyendo en rust en [nstefoni/jitterscope](https://github.com/nstefoni/jitterscope). docs: [cómo funciona](SETUP.md) · [el rust explicado línea por línea](edge/RUST_NOTES.md) · [design system](web/DESIGN.md)
+**capa 3 — el ci** ([scripts/generate.mjs](scripts/generate.mjs), node). el mismo pipeline reescrito en javascript corre cada 6 horas como github action y commitea `assets/card.svg` + telemetría — es el respaldo del worker, y de paso la serie histórica queda en el log de commits. son gemelos: tocás la métrica en uno, la tocás en el otro.
+
+**capa 4 — el sitio** ([web/](web/), tu navegador). la página en github.io mide la conexión del propio visitante: helicorder de 4 canales, gauge de shannon, event feed y el panel 3d. tu conexión, grabada y exportable.
+
+un detalle de honestidad técnica: ni en workers ni en el navegador hay udp — acá se mide rtt de http. lo de verdad, con pings udp, sliding window y tui, se está construyendo en rust en [nstefoni/jitterscope](https://github.com/nstefoni/jitterscope); el perfil es la maqueta conceptual.
+
+docs: [cómo funciona](SETUP.md) · [el rust explicado línea por línea](edge/RUST_NOTES.md) · [design system](web/DESIGN.md)
 
 </details>
