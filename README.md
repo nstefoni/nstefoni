@@ -14,19 +14,11 @@
 <summary><code>■ how does this work? · english</code></summary>
 <br/>
 
-**□ the simple version — no jargon**
-
-imagine the hum of a refrigerator. when everything's fine, the hum is steady; right before something breaks, it starts to stutter — even though the fridge still works. this card listens to the internet's hum: every time someone opens this profile, a small program i wrote sends 48 tiny signals to four big internet services and times how long each takes to come back. steady times → healthy connection. times that wobble in a disorganized way → early warning: trouble shows up in the rhythm *before* anything visibly fails. and the picture above is not a saved image — it gets drawn fresh from those measurements at the exact moment you opened this page. the **entropy** number scores how messy the rhythm is, from 0 (perfectly steady) to 1 (chaos).
-
----
-
-**■ the technical version**
-
 > most monitoring is reactive: it tells you when something already broke. **jitterscope** is a digital seismograph — it measures how chaotic latency is *becoming*, and detects the signature of chaos before failure is visible.
 
-the metric is **shannon entropy over the rtt window**: `H(X) = -Σ P(xᵢ)·log₂P(xᵢ)`, normalized 0–1. predictable latency concentrates in few bins → low H → healthy. erratic latency spreads across bins → high H → stress signature. variance climbs *before* packet loss — entropy is the leading indicator, downtime is the lagging one.
+the metric is **shannon entropy over the rtt window**: `H(X) = -Σ P(xᵢ)·log₂P(xᵢ)`, normalized 0–1. in plain words: latency has a rhythm. on a healthy connection every probe comes back in roughly the same time, so the histogram piles into a few bins → low H. under stress the times scatter all over → H climbs toward 1. and the rhythm gets messy *before* packets actually drop — entropy is the leading indicator, downtime is the lagging one.
 
-this card is not an image — it's an instrument. every view triggers a [rust worker](edge/) on cloudflare's edge that fires 48 real http probes at 4 targets (github · npm · cloudflare · vercel), computes H over the window, pulls live github stats, and renders this svg on the spot. served stale-while-revalidate so it loads instantly; the timestamp tells you when the probes ran.
+this card is not an image — it's an instrument. every view triggers a [rust worker](edge/) on cloudflare's edge (a small program running in a datacenter near whoever's looking) that fires 48 real http probes at 4 targets (github · npm · cloudflare · vercel) — actual requests, each one timed — computes H over the window, pulls live github stats, and renders this svg on the spot. the drawing up top was made for *this* visit; the timestamp tells you when the probes ran. served stale-while-revalidate so it loads instantly.
 
 three layers, one idea:
 
@@ -44,19 +36,11 @@ the real thing — udp probes, sliding window, tui — is being built in rust at
 <summary><code>■ ¿cómo funciona esto? · español</code></summary>
 <br/>
 
-**□ la versión simple — sin tecnicismos**
-
-imaginate el zumbido de una heladera. cuando todo está bien, el zumbido es parejo; justo antes de romperse empieza a trastabillar — aunque la heladera todavía funcione. esta card escucha el zumbido de internet: cada vez que alguien abre este perfil, un programita que escribí manda 48 señales chiquitas a cuatro servicios grandes de internet y cronometra cuánto tarda cada una en volver. tiempos parejos → conexión sana. tiempos que bailan de forma desordenada → alerta temprana: los problemas aparecen en el ritmo *antes* de que algo falle a la vista. y el dibujo de arriba no es una imagen guardada — se genera fresco con esas mediciones en el momento exacto en que abriste esta página. el número de **entropy** califica qué tan desprolijo es el ritmo, de 0 (perfectamente estable) a 1 (caos).
-
----
-
-**■ la versión técnica**
-
 > la mayoría del monitoreo es reactivo: te avisa cuando algo ya se rompió. **jitterscope** es un sismógrafo digital — mide qué tan caótica se está *volviendo* la latencia, y detecta la firma del caos antes de que la falla sea visible.
 
-la métrica es **entropía de shannon sobre la ventana de rtt**: `H(X) = -Σ P(xᵢ)·log₂P(xᵢ)`, normalizada 0–1. la latencia predecible se concentra en pocos bins → H baja → saludable. la latencia errática se dispersa entre bins → H alta → firma de estrés. la varianza sube *antes* que la pérdida de paquetes — la entropía es el indicador adelantado, el downtime es el atrasado.
+la métrica es **entropía de shannon sobre la ventana de rtt**: `H(X) = -Σ P(xᵢ)·log₂P(xᵢ)`, normalizada 0–1. en criollo: la latencia tiene un ritmo. con la conexión sana cada probe vuelve en más o menos el mismo tiempo, el histograma se apila en pocos bins → H baja. bajo estrés los tiempos se desparraman → H trepa hacia 1. y el ritmo se ensucia *antes* de que se pierdan paquetes — la entropía es el indicador adelantado, el downtime es el atrasado.
 
-esta card no es una imagen — es un instrumento. cada visita dispara un [worker en rust](edge/) en el edge de cloudflare que lanza 48 probes http reales contra 4 targets (github · npm · cloudflare · vercel), calcula H sobre la ventana, trae stats de github en vivo y renderiza este svg en el momento. se sirve stale-while-revalidate así carga instantáneo; el timestamp te dice cuándo corrieron los probes.
+esta card no es una imagen — es un instrumento. cada visita dispara un [worker en rust](edge/) en el edge de cloudflare (un programa chico corriendo en un datacenter cerca del que mira) que lanza 48 probes http reales contra 4 targets (github · npm · cloudflare · vercel) — requests de verdad, cada una cronometrada — calcula H sobre la ventana, trae stats de github en vivo y renderiza este svg en el momento. el dibujo de arriba se hizo para *esta* visita; el timestamp te dice cuándo corrieron los probes. se sirve stale-while-revalidate así carga instantáneo.
 
 tres capas, una idea:
 
