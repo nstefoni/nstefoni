@@ -95,7 +95,11 @@ async fn timed_fetch(url: &str, timeout_ms: u64) -> Sample {
 
 async fn collect(cfg: &Value) -> Vec<(String, Sample)> {
     let rounds = cfg["rounds"].as_u64().unwrap_or(12) as usize;
-    let probes: Vec<(String, String)> = cfg["probes"]
+    collect_list(&cfg["probes"], rounds).await
+}
+
+async fn collect_list(probes_v: &Value, rounds: usize) -> Vec<(String, Sample)> {
+    let probes: Vec<(String, String)> = probes_v
         .as_array()
         .map(|a| {
             a.iter()
@@ -179,7 +183,13 @@ fn analyze(series: &[(String, Sample)]) -> Metrics {
     let mut sorted = ok.clone();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let p50 = sorted.get(sorted.len() / 2).copied().unwrap_or(0.0);
-    // normalize each sample by ITS host's p50 — four baselines, one distribution
+    let norm = normalized(series);
+    let entropy = (shannon(&norm, BINS) * 0.85 + loss * 1.5).min(1.0);
+    Metrics { p50, jit, loss, entropy }
+}
+
+// normalize each sample by ITS host's p50 — many baselines, one distribution
+fn normalized(series: &[(String, Sample)]) -> Vec<f64> {
     let mut norm: Vec<f64> = Vec::new();
     let mut names: Vec<&str> = series.iter().map(|(n, _)| n.as_str()).collect();
     names.sort();
@@ -192,8 +202,7 @@ fn analyze(series: &[(String, Sample)]) -> Metrics {
         let hp = sv[sv.len() / 2];
         if hp > 1e-9 { norm.extend(vals.iter().map(|v| v / hp)); }
     }
-    let entropy = (shannon(&norm, BINS) * 0.85 + loss * 1.5).min(1.0);
-    Metrics { p50, jit, loss, entropy }
+    norm
 }
 
 // ---------- github stats ----------
@@ -231,6 +240,122 @@ async fn gh_stats(cfg: &Value, env: &Env) -> (Option<i64>, Option<i64>) {
         }
     }
     (repos, contrib)
+}
+
+// ---------- mesh: durable objects pinned across cloudflare's regions ----------
+// one RegionProbe per region (location hints) — each probes the same targets
+// from a different continent, with its own subrequest budget. nine vantage
+// points, one distribution.
+const REGIONS: [(&str, &str); 9] = [
+    ("wnam", "WNAM"), ("enam", "ENAM"), ("sam", "SAM"),
+    ("weur", "WEUR"), ("eeur", "EEUR"), ("apac", "APAC"),
+    ("oc", "OC"), ("afr", "AFR"), ("me", "ME"),
+];
+
+#[durable_object]
+pub struct RegionProbe {
+    _state: State,
+    _env: Env,
+}
+
+impl DurableObject for RegionProbe {
+    fn new(state: State, env: Env) -> Self {
+        Self { _state: state, _env: env }
+    }
+
+    async fn fetch(&self, mut req: Request) -> Result<Response> {
+        let body: Value = req.json().await?;
+        let rounds = body["rounds"].as_u64().unwrap_or(6) as usize;
+        let series = collect_list(&body["probes"], rounds).await;
+        let norm = normalized(&series);
+        let loss = series.iter().filter(|(_, s)| s.lost).count() as f64 / series.len().max(1) as f64;
+        Response::from_json(&serde_json::json!({ "norm": norm, "loss": loss }))
+    }
+}
+
+struct MeshResult {
+    regions: Vec<(String, Option<f64>)>,
+    pooled: Option<f64>,
+}
+
+async fn region_call(env: &Env, hint: &str, payload: String) -> Option<Value> {
+    let ns = env.durable_object("MESH").ok()?;
+    let stub = ns.get_by_name_with_location_hint(hint, hint).ok()?;
+    let mut headers = Headers::new();
+    headers.set("content-type", "application/json").ok()?;
+    let mut init = RequestInit::new();
+    init.with_method(Method::Post)
+        .with_headers(headers)
+        .with_body(Some(worker::wasm_bindgen::JsValue::from_str(&payload)));
+    let req = Request::new_with_init("https://mesh/probe", &init).ok()?;
+    let fut = Box::pin(async move { stub.fetch_with_request(req).await });
+    let timeout = Box::pin(Delay::from(Duration::from_millis(9000)));
+    match select(fut, timeout).await {
+        Either::Left((Ok(mut res), _)) => res.json::<Value>().await.ok(),
+        _ => None,
+    }
+}
+
+async fn mesh_probe(env: &Env, cfg: &Value) -> MeshResult {
+    let payload = serde_json::json!({ "probes": cfg["probes"], "rounds": 6 }).to_string();
+    let raw = join_all(REGIONS.iter().map(|(hint, code)| {
+        let p = payload.clone();
+        async move { (code.to_string(), region_call(env, hint, p).await) }
+    }))
+    .await;
+    let mut pool: Vec<f64> = Vec::new();
+    let mut regions: Vec<(String, Option<f64>)> = Vec::new();
+    for (code, res) in raw {
+        let mut h = None;
+        if let Some(v) = res {
+            let norm: Vec<f64> = v["norm"]
+                .as_array()
+                .map(|a| a.iter().filter_map(|x| x.as_f64()).collect())
+                .unwrap_or_default();
+            if norm.len() >= 8 {
+                let loss = v["loss"].as_f64().unwrap_or(0.0);
+                h = Some((shannon(&norm, BINS) * 0.85 + loss * 1.5).min(1.0));
+                pool.extend(norm);
+            }
+        }
+        regions.push((code, h));
+    }
+    let pooled = if pool.len() >= 24 { Some((shannon(&pool, BINS) * 0.85).min(1.0)) } else { None };
+    MeshResult { regions, pooled }
+}
+
+// ---------- history: last windows in KV → trend ----------
+// one 48-sample window is noisy. degradation is a slope, not a point — so the
+// last 64 windows persist in KV and the card renders where H is heading.
+async fn record_history(env: &Env, m: &Metrics, mesh: &MeshResult) -> Vec<f64> {
+    let Ok(kv) = env.kv("VIEWS") else { return Vec::new() };
+    let mut arr: Vec<Value> = kv
+        .get("history")
+        .text()
+        .await
+        .ok()
+        .flatten()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default();
+    arr.push(serde_json::json!({
+        "t": Date::now().as_millis() / 1000,
+        "h": m.entropy,
+        "hg": mesh.pooled,
+        "p50": m.p50,
+        "loss": m.loss,
+    }));
+    let n = arr.len();
+    if n > 64 {
+        arr.drain(0..n - 64);
+    }
+    if let Ok(s) = serde_json::to_string(&arr) {
+        if let Ok(put) = kv.put("history", s) {
+            let _ = put.execute().await;
+        }
+    }
+    arr.iter()
+        .map(|e| e["hg"].as_f64().unwrap_or_else(|| e["h"].as_f64().unwrap_or(0.0)))
+        .collect()
 }
 
 // ---------- svg ----------
@@ -272,7 +397,7 @@ fn ghost_jitter(dur: f64, amp: f64) -> String {
     )
 }
 
-fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (Option<i64>, Option<i64>), views: Option<u64>) -> String {
+fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (Option<i64>, Option<i64>), views: Option<u64>, mesh: &MeshResult, hist: &[f64]) -> String {
     let w = 880.0;
     let x0 = 48.0;
     let x1 = w - 48.0;
@@ -398,7 +523,64 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
         *y += 46.0;
         h
     };
-    sections.push_str(&header("01 / ABOUT", &mut y));
+    sections.push_str(&header("01 / MESH — ENTROPY BY REGION", &mut y));
+    let cell_w = (x1 - x0) / REGIONS.len() as f64;
+    for (i, (code, h)) in mesh.regions.iter().enumerate() {
+        let cx = x0 + i as f64 * cell_w;
+        sections.push_str(&txt(cx, y, code, TxtOpt { size: 9, fill: &t.dim, ls: 1.5, anchor: "start", weight: 400 }));
+        match h {
+            Some(hv) => {
+                let col = if *hv > 0.9 { &t.alert } else if *hv > 0.78 { &t.warn } else { &t.accent };
+                let v = format!("{:.2}", hv);
+                sections.push_str(&txt(cx, y + 17.0, &v[1..], TxtOpt { size: 11, fill: col, ls: 0.5, anchor: "start", weight: 500 }));
+                let bw = cell_w - 26.0;
+                sections.push_str(&format!(
+                    r#"<rect x="{cx:.1}" y="{:.1}" width="{bw:.1}" height="3" fill="none" stroke="{}" stroke-width="0.5"/><rect x="{cx:.1}" y="{:.1}" width="{:.1}" height="3" fill="{}"/>"#,
+                    y + 25.0, t.hair, y + 25.0, (bw * hv).max(1.5), col
+                ));
+            }
+            None => {
+                sections.push_str(&txt(cx, y + 17.0, "—", TxtOpt { size: 11, fill: &t.faint, ls: 0.5, anchor: "start", weight: 400 }));
+            }
+        }
+    }
+    y += 44.0;
+    if hist.len() >= 2 {
+        let (sw, sh) = (160.0, 12.0);
+        let mn = hist.iter().cloned().fold(f64::INFINITY, f64::min);
+        let mx = hist.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let pts: String = hist
+            .iter()
+            .enumerate()
+            .map(|(i, v)| {
+                format!(
+                    "{}{:.1} {:.1}",
+                    if i == 0 { "M" } else { "L" },
+                    x0 + (i as f64 / (hist.len() - 1) as f64) * sw,
+                    y + sh - ((v - mn) / (mx - mn + 1e-9)) * sh
+                )
+            })
+            .collect();
+        sections.push_str(&format!(r#"<path d="{pts}" fill="none" stroke="{}" stroke-width="1"/>"#, t.accent));
+        let half = hist.len() / 2;
+        let mean = |s: &[f64]| s.iter().sum::<f64>() / s.len().max(1) as f64;
+        let delta = mean(&hist[half..]) - mean(&hist[..half]);
+        let arrow = if delta > 0.02 { "↗" } else if delta < -0.02 { "↘" } else { "→" };
+        sections.push_str(&txt(
+            x0 + sw + 12.0,
+            y + sh,
+            &format!("{arrow} {delta:+.2} · POOLED H, LAST {} WINDOWS", hist.len()),
+            TxtOpt { size: 9, fill: &t.dim, ls: 1.5, anchor: "start", weight: 400 },
+        ));
+        y += sh + 16.0;
+    }
+    y += 12.0;
+    sections.push_str(&format!(
+        r#"<line x1="{x0}" y1="{y}" x2="{x1}" y2="{y}" stroke="{}" stroke-width="1"/>"#,
+        t.hair
+    ));
+    y += 40.0;
+    sections.push_str(&header("02 / ABOUT", &mut y));
     for l in cfg["about_en"].as_array().unwrap_or(&vec![]) {
         sections.push_str(&txt(x0, y, l.as_str().unwrap_or(""), TxtOpt { size: 13, fill: &t.ink, ls: 1.2, anchor: "start", weight: 400 }));
         y += 22.0;
@@ -414,7 +596,7 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
         t.hair
     ));
     y += 40.0;
-    sections.push_str(&header("02 / STACK", &mut y));
+    sections.push_str(&header("03 / STACK", &mut y));
     for row in cfg["stack"].as_array().unwrap_or(&vec![]) {
         let k = row[0].as_str().unwrap_or("");
         let v = row[1].as_str().unwrap_or("");
@@ -430,7 +612,7 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
                 t.hair
             ));
             y += 40.0;
-            sections.push_str(&header("03 / BUILDING", &mut y));
+            sections.push_str(&header("04 / BUILDING", &mut y));
             for row in building {
                 let k = row[0].as_str().unwrap_or("");
                 let v = row[1].as_str().unwrap_or("");
@@ -585,8 +767,9 @@ async fn bump_views(env: &Env) -> Option<u64> {
 async fn run(env: &Env) -> Result<String> {
     let mut cfg_res = Fetch::Request(ua_request(&format!("{}/config.json", RAW))?).send().await?;
     let cfg: Value = cfg_res.json().await?;
-    let (series, gh, views) = futures::join!(collect(&cfg), gh_stats(&cfg, env), bump_views(env));
+    let (series, gh, views, mesh) = futures::join!(collect(&cfg), gh_stats(&cfg, env), bump_views(env), mesh_probe(env, &cfg));
     let m = analyze(&series);
+    let hist = record_history(env, &m, &mesh).await;
     let t = Theme::from(&cfg);
-    Ok(card(&cfg, &t, &series, &m, gh, views))
+    Ok(card(&cfg, &t, &series, &m, gh, views, &mesh, &hist))
 }

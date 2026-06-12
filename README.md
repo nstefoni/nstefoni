@@ -20,11 +20,12 @@ the metric is **shannon entropy over the rtt window**: `H(X) = -Σ P(xᵢ)·log�
 
 this card is not an image — it's an instrument. every view triggers a [rust worker](edge/) on cloudflare's edge (a small program running in a datacenter near whoever's looking) that fires 48 real http probes at 4 targets (github · npm · cloudflare · vercel) — actual requests, each one timed — computes H over the window, pulls live github stats, and renders this svg on the spot. the drawing up top was made for *this* visit; the timestamp tells you when the probes ran. served stale-while-revalidate so it loads instantly.
 
-three layers, one idea:
+four layers, one idea:
 
 | layer | where | measures |
 |---|---|---|
 | this card | rust→wasm on cloudflare workers, per view | edge → 4 public targets |
+| edge mesh | durable objects pinned in 9 cloudflare regions | the same targets seen from 9 continents-ish, entropy per region + pooled trend |
 | [live dashboard](https://nstefoni.github.io/nstefoni/) | your browser | **your own connection**, recorded + exportable |
 | [ci fallback](.github/workflows/) | github actions, cron 6h | runner → targets, committed history |
 
@@ -42,11 +43,12 @@ la métrica es **entropía de shannon sobre la ventana de rtt**: `H(X) = -Σ P(x
 
 esta card no es una imagen — es un instrumento. cada visita dispara un [worker en rust](edge/) en el edge de cloudflare (un programa chico corriendo en un datacenter cerca del que mira) que lanza 48 probes http reales contra 4 targets (github · npm · cloudflare · vercel) — requests de verdad, cada una cronometrada — calcula H sobre la ventana, trae stats de github en vivo y renderiza este svg en el momento. el dibujo de arriba se hizo para *esta* visita; el timestamp te dice cuándo corrieron los probes. se sirve stale-while-revalidate así carga instantáneo.
 
-tres capas, una idea:
+cuatro capas, una idea:
 
 | capa | dónde | mide |
 |---|---|---|
 | esta card | rust→wasm en cloudflare workers, por visita | edge → 4 targets públicos |
+| mesh de edge | durable objects fijados en 9 regiones de cloudflare | los mismos targets vistos desde 9 regiones del planeta, entropía por región + tendencia agregada |
 | [dashboard en vivo](https://nstefoni.github.io/nstefoni/) | tu navegador | **tu propia conexión**, grabada + exportable |
 | [fallback de ci](.github/workflows/) | github actions, cron cada 6h | runner → targets, historial commiteado |
 
