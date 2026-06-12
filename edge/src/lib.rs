@@ -836,6 +836,13 @@ fn client_response(svg: String) -> Result<Response> {
     Ok(Response::ok(svg)?.with_headers(headers))
 }
 
+// cron (wrangler.toml → [triggers]): re-measure every 30 min so the KV card
+// never ages more than half an hour, even with zero visitors
+#[event(scheduled)]
+async fn scheduled(_event: ScheduledEvent, env: Env, _ctx: ScheduleContext) {
+    render_and_store(env).await;
+}
+
 async fn store_card(env: Env, svg: String) {
     if let Ok(kv) = env.kv("VIEWS") {
         if let Ok(put) = kv.put("card", svg) {

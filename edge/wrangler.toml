@@ -5,6 +5,11 @@ compatibility_date = "2025-01-01"
 [build]
 command = "worker-build --release"
 
+# keep the KV card warm: with low traffic the stale card can age for hours —
+# the first visitor after a quiet day would see yesterday's measurement
+[triggers]
+crons = ["*/30 * * * *"]
+
 [[kv_namespaces]]
 binding = "VIEWS"
 id = "780323dcac594c1b9d4541fe0e7aa390"
