@@ -273,7 +273,9 @@ const LAND: [u64; 32] = [
     0x000041ffc03c0000, 0x001200fc007c0000, 0x009800fc00fc0000, 0x0304007c01fc0000,
     0x0000007c03fc0000, 0x0280007c01fc0000, 0x03c0017c01f80000, 0x27e0013c01f00000,
     0x07f0003800780000, 0x07f0003800780000, 0x0620001800780000, 0x0600000000380000,
-    0x0000000000080000, 0x0000000000080000, 0x0000000000080000, 0x0000000000080000,
+    // southern cone widened: rio negro/chubut reach the atlantic at this cell
+    // size — the original mask thinned argentina to a 1-cell thread
+    0x0000000000180000, 0x0000000000080000, 0x0000000000080000, 0x0000000000080000,
 ];
 
 // rough continental boxes → index into REGIONS. this paints a 5.6°-cell map,
@@ -638,8 +640,10 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
         match h {
             Some(hv) => {
                 let col = if *hv > MESH_ALERT { &t.alert } else if *hv > MESH_WARN { &t.warn } else { &t.accent };
-                let v = format!("{:.2}", hv);
-                sections.push_str(&txt(cx, y + 17.0, &v[1..], TxtOpt { size: 11, fill: col, ls: 0.5, anchor: "start", weight: 500 }));
+                // strip the leading zero of "0.xx" — but a saturated index is
+                // "1.00", and blindly cutting the first char rendered it ".00"
+                let v = if *hv >= 0.995 { "1.0".to_string() } else { format!("{:.2}", hv)[1..].to_string() };
+                sections.push_str(&txt(cx, y + 17.0, &v, TxtOpt { size: 11, fill: col, ls: 0.5, anchor: "start", weight: 500 }));
                 let bw = cell_w - 26.0;
                 sections.push_str(&format!(
                     r#"<rect x="{cx:.1}" y="{:.1}" width="{bw:.1}" height="3" fill="none" stroke="{}" stroke-width="0.5"/><rect x="{cx:.1}" y="{:.1}" width="{:.1}" height="3" fill="{}"/>"#,
@@ -747,9 +751,11 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
     let env_vals: String = frames.iter().map(|f| env_d(f)).collect::<Vec<_>>().join(";");
     let trace_vals: String = frames.iter().map(|f| trace_d(f)).collect::<Vec<_>>().join(";");
     let live_ys: String = frames.iter().map(|f| format!("{:.1}", y_of(f[n - 1]))).collect::<Vec<_>>().join(";");
-    let ent_str = {
-        let s = format!("{:.2}", m.entropy);
-        s[1..].to_string()
+    let ent_str = if m.entropy >= 0.995 {
+        // same trap as the mesh cells: "1.00" minus its first char is ".00"
+        "1.0".to_string()
+    } else {
+        format!("{:.2}", m.entropy)[1..].to_string()
     };
 
     format!(
@@ -830,9 +836,25 @@ fn client_response(svg: String) -> Result<Response> {
     Ok(Response::ok(svg)?.with_headers(headers))
 }
 
+async fn store_card(env: Env, svg: String) {
+    if let Ok(kv) = env.kv("VIEWS") {
+        if let Ok(put) = kv.put("card", svg) {
+            let _ = put.execute().await;
+        }
+    }
+}
+
 async fn render_and_store(env: Env) {
     if let Ok(svg) = run(&env).await {
-        *LAST.lock().unwrap() = Some(svg);
+        *LAST.lock().unwrap() = Some(svg.clone());
+        // persist for cold isolates: camo gives up at ~4s and a fresh render
+        // with transcontinental anchors can exceed that. KV makes the
+        // stale-while-revalidate survive isolate eviction.
+        if let Ok(kv) = env.kv("VIEWS") {
+            if let Ok(put) = kv.put("card", svg) {
+                let _ = put.execute().await;
+            }
+        }
     }
 }
 
@@ -843,9 +865,19 @@ async fn fetch(_req: Request, env: Env, ctx: Context) -> Result<Response> {
         ctx.wait_until(render_and_store(env));
         return client_response(svg);
     }
+    // cold isolate: serve the last persisted card and refresh in background
+    if let Ok(kv) = env.kv("VIEWS") {
+        if let Ok(Some(svg)) = kv.get("card").text().await {
+            *LAST.lock().unwrap() = Some(svg.clone());
+            ctx.wait_until(render_and_store(env));
+            return client_response(svg);
+        }
+    }
+    // first render ever (nothing in memory nor KV): do it synchronously
     match run(&env).await {
         Ok(svg) => {
             *LAST.lock().unwrap() = Some(svg.clone());
+            ctx.wait_until(store_card(env, svg.clone()));
             client_response(svg)
         }
         Err(_) => Response::redirect(Url::parse(&format!("{}/assets/card.svg", RAW))?),
