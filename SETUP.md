@@ -41,6 +41,8 @@ la regla de calibracion es siempre la misma: los umbrales abrazan la distribucio
 
 **capa 1 — la card (`edge/`):** rust compilado a wasm. cada request: lee `config.json` del repo, tira 48 sondas http (4 hosts en paralelo, cadena secuencial x host xq el jitter es entre muestras consecutivas), shannon sobre la ventana, stats de github via graphql, svg animado. fallback: si algo falla, 302 a la card commiteada. el codigo explicado linea x linea esta en `edge/RUST_NOTES.md`.
 
+**serve-stale (importante):** camo corta a ~4s y una medicion completa con anchors transcontinentales tarda ~6s. x eso la card servida sale de kv: cada vista responde al instante con la ULTIMA medicion y dispara una nueva en background — tu visita pinta la card q ve el proximo visitante. y un cron del worker (`edge/wrangler.toml` → `[triggers]`, cada 30 min) re-mide aunque nadie visite, asi el primero q llega despues de un dia tranquilo no ve la card de ayer.
+
 **el mesh (dentro de la card):** 9 durable objects con location hints, uno fijado en cada region de cloudflare (wnam, enam, sam, weur, eeur, apac, oc, afr, me) — cada uno sondea los mismos targets desde su continente. los targets del mesh NO son los de la card: gh/npm/vrc son anycast, cada region recibe respuesta de un servidor al lado → rutas cortas y perfectas → H plana → verde eterno. el mesh sondea **origenes unicos** (anchors de ripe atlas: sao paulo, bangalore, johannesburgo — servidores q viven en UN solo lugar fisico) para q cada region mida una ruta de largo distinto, mas UN target anycast (cloudflare) como **control**: si el control se pone rojo, el problema es el vantage point, no la ruta. diseño experimento-con-control, no decoracion. se configura en `config.json` → `mesh_probes` (fallback: `probes`). ojo: los anchors responden solo http plano (puerto 80) — para el worker no es problema.
 
 **capa 2 — el ci (`scripts/generate.mjs`):** mismo pipeline en node, corre cada 6hs, commitea `assets/card.svg` + `assets/telemetry.json`. respaldo del worker y serie historica gratis en los commits.
@@ -61,7 +63,8 @@ fondo carbon neutro `#191c1e` + tinta `#e9ede2` + un solo acento lima `#c8f04c`.
 | paleta | `config.json` → `"theme"` |
 | hosts o cantidad de sondas | `config.json` → `probes` / `rounds` |
 | targets del mesh regional | `config.json` → `mesh_probes` (1 control anycast + origenes unicos) |
-| frecuencia del cron | `.github/workflows/update-banner.yml` |
+| cron del ci (card fallback commiteada) | `.github/workflows/update-banner.yml` |
+| cron del worker (kv tibio, cada 30 min) | `edge/wrangler.toml` → `[triggers]` |
 | la metrica / el dibujo | `edge/src/lib.rs` y `scripts/generate.mjs` — son GEMELOS, tocar ambos |
 | la arena 3d | `web/index.html` |
 
