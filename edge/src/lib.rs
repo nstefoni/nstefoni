@@ -24,6 +24,32 @@ const LOCAL_ALERT: f64 = 0.90;
 const MESH_WARN: f64 = 0.50;
 const MESH_ALERT: f64 = 0.65;
 
+// ---------- continuous heat ramp ----------
+// three buckets hide micro-variation; a continuous ramp shows it. pure accent
+// at 0, full warn AT the warn threshold, full alert AT the alert threshold,
+// clamped beyond — thresholds stay the semantic anchors, the tones in between
+// let small differences read as different colors.
+fn hex_channel(hex: &str, i: usize) -> f64 {
+    hex.get(1 + i * 2..3 + i * 2)
+        .and_then(|s| u8::from_str_radix(s, 16).ok())
+        .map(|v| v as f64)
+        .unwrap_or(0.0)
+}
+
+fn lerp_hex(a: &str, b: &str, t: f64) -> String {
+    let t = t.clamp(0.0, 1.0);
+    let ch = |i: usize| (hex_channel(a, i) + (hex_channel(b, i) - hex_channel(a, i)) * t).round() as u8;
+    format!("#{:02x}{:02x}{:02x}", ch(0), ch(1), ch(2))
+}
+
+fn heat(t: &Theme, h: f64, warn: f64, alert: f64) -> String {
+    if h <= warn {
+        lerp_hex(&t.accent, &t.warn, h / warn)
+    } else {
+        lerp_hex(&t.warn, &t.alert, (h - warn) / (alert - warn))
+    }
+}
+
 // ---------- types ----------
 #[derive(Clone, Copy)]
 struct Sample {
@@ -545,7 +571,8 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
     };
     let e_w = 90.0;
     // site calibration: edge probes pay DNS/TLS per request, noise floor ≈ .75
-    let e_col = if m.entropy > LOCAL_ALERT { &t.alert } else if m.entropy > LOCAL_WARN { &t.warn } else { &t.accent };
+    let e_col = heat(t, m.entropy, LOCAL_WARN, LOCAL_ALERT);
+    let e_col = &e_col;
     let mut stats: Vec<String> = Vec::new();
     if let Some(c) = gh.1 {
         stats.push(format!("CONTRIB {}", c));
@@ -609,14 +636,11 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
         }
         let (col, op) = if idx < 9 {
             match mesh.regions.get(idx).and_then(|(_, h)| *h) {
-                Some(hv) => (
-                    if hv > MESH_ALERT { t.alert.as_str() } else if hv > MESH_WARN { t.warn.as_str() } else { t.accent.as_str() },
-                    "0.9",
-                ),
-                None => (t.faint.as_str(), "0.5"),
+                Some(hv) => (heat(t, hv, MESH_WARN, MESH_ALERT), "0.9"),
+                None => (t.faint.clone(), "0.5"),
             }
         } else {
-            (t.faint.as_str(), "0.35")
+            (t.faint.clone(), "0.35")
         };
         sections.push_str(&format!(r#"<g fill="{col}" opacity="{op}">{cells}</g>"#));
     }
@@ -640,7 +664,8 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
         sections.push_str(&txt(cx, y, code, TxtOpt { size: 9, fill: &t.dim, ls: 1.5, anchor: "start", weight: 400 }));
         match h {
             Some(hv) => {
-                let col = if *hv > MESH_ALERT { &t.alert } else if *hv > MESH_WARN { &t.warn } else { &t.accent };
+                let col = heat(t, *hv, MESH_WARN, MESH_ALERT);
+                let col = &col;
                 // strip the leading zero of "0.xx" — but a saturated index is
                 // "1.00", and blindly cutting the first char rendered it ".00"
                 let v = if *hv >= 0.995 { "1.0".to_string() } else { format!("{:.2}", hv)[1..].to_string() };

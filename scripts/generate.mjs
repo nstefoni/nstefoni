@@ -215,7 +215,17 @@ function card(series, m, gh) {
 
   const date = new Date().toISOString().slice(0, 16).replace("T", " ");
   const eW = 90;
-  const eCol = m.entropy > 0.62 ? T.alert : m.entropy > 0.4 ? T.warn : T.accent;
+  // continuous heat ramp (twin of heat() in edge/src/lib.rs): pure accent at
+  // 0, full warn AT the warn threshold (.40 here), full alert AT alert (.62)
+  const hexCh = (h, i) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
+  const lerpHex = (a, b, t) => {
+    t = Math.max(0, Math.min(1, t));
+    const ch = (i) => Math.round(hexCh(a, i) + (hexCh(b, i) - hexCh(a, i)) * t);
+    return `#${[ch(0), ch(1), ch(2)].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+  };
+  const heat = (h, warn, alert) =>
+    h <= warn ? lerpHex(T.accent, T.warn, h / warn) : lerpHex(T.warn, T.alert, (h - warn) / (alert - warn));
+  const eCol = heat(m.entropy, 0.4, 0.62);
   const stats = [
     gh.contrib != null ? `CONTRIB ${gh.contrib}` : null,
     gh.repos != null ? `REPOS ${gh.repos}` : null,

@@ -31,6 +31,8 @@ el indice final suma perdida de paquetes: `entropia = min(1, H·0.85 + loss·1.5
 
 la regla de calibracion es siempre la misma: los umbrales abrazan la distribucion q el instrumento realmente mide — un panel q nunca cambia de color no informa.
 
+**rampa continua (no 3 baldes):** el color no salta entre lima/ambar/rojo — interpola. lima puro en 0, ambar PLENO exactamente en el umbral warn, rojo PLENO en alert (clampeado mas alla). los umbrales siguen siendo las anclas semanticas, pero los tonos intermedios hacen visibles las variaciones chicas: un .25 y un .35 ya no son "el mismo verde". implementado como `heat()` en `edge/src/lib.rs` y su gemelo en `scripts/generate.mjs`.
+
 ## las 3 capas (espejo de la arquitectura del producto)
 
 | perfil (hoy) | producto (vision) |
