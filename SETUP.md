@@ -27,7 +27,7 @@ el indice final suma perdida de paquetes: `entropia = min(1, H·0.85 + loss·1.5
 |---|---|---|---|---|
 | ci + web (node/navegador) | `< .40` | `.40-.62` | `> .62` | conexiones reusadas, piso bajo |
 | card local (worker, 48 sondas) | `< .78` | `.78-.90` | `> .90` | cada sonda paga dns/tls → piso ≈ .75 |
-| mesh (6 rounds x region) | `< .60` | `.60-.75` | `> .75` | ventana chica y ruidosa; calibrado a la distribucion real (~.45-.70) |
+| mesh (6 rounds x region) | `< .50` | `.50-.65` | `> .65` | ventana chica y ruidosa; calibrado a la distribucion CON anchors (~.20-.65, mediana ~.40) — si cambian los targets, recalibrar |
 
 la regla de calibracion es siempre la misma: los umbrales abrazan la distribucion q el instrumento realmente mide — un panel q nunca cambia de color no informa.
 

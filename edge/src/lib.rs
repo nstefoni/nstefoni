@@ -15,13 +15,14 @@ const BINS: usize = 12;
 // color thresholds — two instruments, two calibrations:
 // · LOCAL (48 samples, one vantage): edge probes pay DNS/TLS per request,
 //   noise floor ≈ .75 → warn/alert sit above it.
-// · MESH (6 rounds per region, unique-origin targets): smaller window, live
-//   distribution ≈ .45–.70 → thresholds hug it so the map can change color.
-//   an instrument that always says the same thing informs nothing.
+// · MESH (6 rounds per region, unique-origin targets): smaller window. the
+//   anycast-era distribution sat at ≈ .45–.70; with ripe anchors it dropped
+//   to ≈ .20–.65 (median ~.40) — recalibrated so the map keeps changing
+//   color. an instrument that always says the same thing informs nothing.
 const LOCAL_WARN: f64 = 0.78;
 const LOCAL_ALERT: f64 = 0.90;
-const MESH_WARN: f64 = 0.60;
-const MESH_ALERT: f64 = 0.75;
+const MESH_WARN: f64 = 0.50;
+const MESH_ALERT: f64 = 0.65;
 
 // ---------- types ----------
 #[derive(Clone, Copy)]
@@ -452,7 +453,7 @@ fn ghost_jitter(dur: f64, amp: f64) -> String {
     )
 }
 
-fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (Option<i64>, Option<i64>), views: Option<u64>, mesh: &MeshResult, hist: &[f64]) -> String {
+fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (Option<i64>, Option<i64>), mesh: &MeshResult, hist: &[f64]) -> String {
     let w = 880.0;
     let x0 = 48.0;
     let x1 = w - 48.0;
@@ -552,9 +553,9 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
     if let Some(r) = gh.0 {
         stats.push(format!("REPOS {}", r));
     }
-    if let Some(v) = views {
-        stats.push(format!("VIEWS {}", v));
-    }
+    // the card is a snapshot served stale, but the counter must not travel in
+    // time with it: render a token, substitute the live count at serve time
+    stats.push("VIEWS @@V@@".to_string());
     stats.push(format!("P50 {:.0}MS", m.p50));
     stats.push(format!("JIT {:.1}MS", m.jit));
     let stats = stats.join(" · ");
@@ -829,6 +830,13 @@ fn card(cfg: &Value, t: &Theme, series: &[(String, Sample)], m: &Metrics, gh: (O
 use std::sync::Mutex;
 static LAST: Mutex<Option<String>> = Mutex::new(None);
 
+// the snapshot is stale by design; the counter must be live. old cards in KV
+// predate the token — replace() is a no-op on them, they age out in minutes.
+fn fill_views(svg: String, views: Option<u64>) -> String {
+    let v = views.map(|n| n.to_string()).unwrap_or_else(|| "—".to_string());
+    svg.replace("@@V@@", &v)
+}
+
 fn client_response(svg: String) -> Result<Response> {
     let mut headers = Headers::new();
     headers.set("content-type", "image/svg+xml; charset=utf-8")?;
@@ -867,17 +875,18 @@ async fn render_and_store(env: Env) {
 
 #[event(fetch)]
 async fn fetch(_req: Request, env: Env, ctx: Context) -> Result<Response> {
+    let views = bump_views(&env).await;
     let stale = LAST.lock().unwrap().clone();
     if let Some(svg) = stale {
         ctx.wait_until(render_and_store(env));
-        return client_response(svg);
+        return client_response(fill_views(svg, views));
     }
     // cold isolate: serve the last persisted card and refresh in background
     if let Ok(kv) = env.kv("VIEWS") {
         if let Ok(Some(svg)) = kv.get("card").text().await {
             *LAST.lock().unwrap() = Some(svg.clone());
             ctx.wait_until(render_and_store(env));
-            return client_response(svg);
+            return client_response(fill_views(svg, views));
         }
     }
     // first render ever (nothing in memory nor KV): do it synchronously
@@ -885,16 +894,16 @@ async fn fetch(_req: Request, env: Env, ctx: Context) -> Result<Response> {
         Ok(svg) => {
             *LAST.lock().unwrap() = Some(svg.clone());
             ctx.wait_until(store_card(env, svg.clone()));
-            client_response(svg)
+            client_response(fill_views(svg, views))
         }
         Err(_) => Response::redirect(Url::parse(&format!("{}/assets/card.svg", RAW))?),
     }
 }
 
 // ---------- views counter ----------
-// every render = one real view reaching the edge. camo's cache makes this a
-// floor, not an exact count — and that's fine: it counts measurements, not eyes.
-// KV read+increment+write; races at profile scale are noise.
+// counted per REQUEST (not per render): the cron re-measures but nobody is
+// looking, so it must not count. camo's cache still makes this a floor, not
+// an exact count. KV read+increment+write; races at profile scale are noise.
 async fn bump_views(env: &Env) -> Option<u64> {
     let kv = env.kv("VIEWS").ok()?;
     let n = kv
@@ -913,9 +922,9 @@ async fn bump_views(env: &Env) -> Option<u64> {
 async fn run(env: &Env) -> Result<String> {
     let mut cfg_res = Fetch::Request(ua_request(&format!("{}/config.json", RAW))?).send().await?;
     let cfg: Value = cfg_res.json().await?;
-    let (series, gh, views, mesh) = futures::join!(collect(&cfg), gh_stats(&cfg, env), bump_views(env), mesh_probe(env, &cfg));
+    let (series, gh, mesh) = futures::join!(collect(&cfg), gh_stats(&cfg, env), mesh_probe(env, &cfg));
     let m = analyze(&series);
     let hist = record_history(env, &m, &mesh).await;
     let t = Theme::from(&cfg);
-    Ok(card(&cfg, &t, &series, &m, gh, views, &mesh, &hist))
+    Ok(card(&cfg, &t, &series, &m, gh, &mesh, &hist))
 }
